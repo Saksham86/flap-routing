@@ -1,0 +1,23 @@
+# P0 exit check. On Colab the notebook exports QACR_RESULTS_ROOT=/content/drive/MyDrive/qacr/results
+# so results land on Drive; locally the variable is unset and results go to ./results.
+phase: p0
+run_name: hello_gpu
+seed: 1234
+require_gpu: false          # the Colab notebook passes --set require_gpu=true
+
+paths:
+  results_root: ${QACR_RESULTS_ROOT}
+
+bench:
+  n_gpu: 4096               # fp16 matmul size on GPU
+  n_cpu: 1024               # fp32 matmul size on CPU / edge devices
+  seconds: 10.0
+  warmup: 10
+
+energy:
+  idle_seconds: 3.0
+  sample_interval_s: 0.02
+
+hub:
+  check: true
+  model_id: HuggingFaceTB/SmolLM2-1.7B

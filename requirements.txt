@@ -1,0 +1,19 @@
+# Pinned stack, verified on 2026-10-13 to install together (pip check clean) and import on
+# Python 3.12 with torch 2.7 (CPU). Every version was released at least 2 weeks before pinning.
+#
+# torch is deliberately NOT pinned: on Colab we use the preinstalled CUDA build (reinstalling
+# torch there is slow and can break CUDA). transformers 5.17 needs torch >= 2.5; the notebook
+# asserts this and every run records the exact torch/CUDA versions in env.json + pip_freeze.txt.
+# numpy / pandas / pyarrow / scipy are also left to the base environment for the same reason.
+
+transformers==5.17.0
+huggingface-hub==1.33.0
+datasets==5.0.1
+accelerate==1.15.0
+lm_eval[hf]==0.4.13
+peft==0.20.0
+sentence-transformers==6.0.1
+scikit-learn==1.8.0
+nvidia-ml-py==13.610.43
+pyyaml==6.0.3
+pytest==8.4.2

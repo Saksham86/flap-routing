@@ -1,0 +1,20 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+.venv/
+venv/
+.env
+
+# Model weights / checkpoints never go in git (they live on Google Drive)
+*.safetensors
+*.bin
+*.pt
+*.pth
+checkpoints/
+hf_cache/
+
+# Local scratch runs; real results are imported into results/ deliberately
+results/**/scratch/
+*.tmp
