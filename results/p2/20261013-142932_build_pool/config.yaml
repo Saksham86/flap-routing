@@ -1,0 +1,19 @@
+phase: p2
+run_name: build_pool
+seed: 2026
+paths:
+  results_root: null
+  publish_dir: data/p2
+split_fractions:
+- 0.6
+- 0.2
+- 0.2
+tasks:
+  arc_easy: {}
+  arc_challenge: {}
+  hellaswag: {}
+  winogrande: {}
+  piqa: {}
+  boolq: {}
+  mmlu: {}
+  gsm8k: {}

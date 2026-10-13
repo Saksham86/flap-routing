@@ -1,0 +1,10 @@
+2026-10-13 14:30:37 | INFO    | p2.pool | arc_challenge: eval_docs=1172 dupes=0 kept=1172 splits={'train': 703, 'test': 235, 'val': 234}
+2026-10-13 14:30:47 | INFO    | p2.pool | arc_easy: eval_docs=2376 dupes=0 kept=2376 splits={'test': 475, 'train': 1426, 'val': 475}
+2026-10-13 14:30:52 | INFO    | p2.pool | boolq: eval_docs=3270 dupes=0 kept=3270 splits={'test': 654, 'val': 654, 'train': 1962}
+2026-10-13 14:30:56 | INFO    | p2.pool | gsm8k: eval_docs=1319 dupes=0 kept=1319 splits={'train': 791, 'test': 264, 'val': 264}
+2026-10-13 14:31:31 | INFO    | p2.pool | hellaswag: eval_docs=10042 dupes=0 kept=4000 splits={'train': 2400, 'val': 800, 'test': 800}
+2026-10-13 14:33:38 | INFO    | p2.pool | mmlu: eval_docs=14042 dupes=105 kept=4000 splits={'val': 803, 'train': 2397, 'test': 800}
+2026-10-13 14:33:46 | INFO    | p2.pool | piqa: eval_docs=1838 dupes=0 kept=1838 splits={'train': 1103, 'val': 368, 'test': 367}
+2026-10-13 14:33:52 | INFO    | p2.pool | winogrande: eval_docs=1267 dupes=0 kept=1267 splits={'val': 253, 'train': 760, 'test': 254}
+2026-10-13 14:33:53 | INFO    | p2.pool | pool: 19242 queries, splits {'train': 11542, 'test': 3849, 'val': 3851}
+2026-10-13 14:33:53 | INFO    | p2.pool | published -> C:\All my stuff\Books\Thesis\flap-routing\data\p2

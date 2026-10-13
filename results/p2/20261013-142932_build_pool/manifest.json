@@ -1,0 +1,192 @@
+{
+  "tasks": {
+    "arc_challenge": {
+      "lm_eval_name": "arc_challenge",
+      "n_leaf_tasks": 1,
+      "n_eval_docs": 1172,
+      "n_duplicates_dropped": 0,
+      "n_kept": 1172,
+      "cap": null,
+      "splits": {
+        "train": 703,
+        "val": 234,
+        "test": 235
+      },
+      "metric": "acc_norm",
+      "num_fewshot": 0,
+      "gen_filter": null,
+      "dataset": {
+        "path": "allenai/ai2_arc",
+        "name": "ARC-Challenge",
+        "hub_sha": "210d026faf9955653af8916fad021475a3f00453"
+      }
+    },
+    "arc_easy": {
+      "lm_eval_name": "arc_easy",
+      "n_leaf_tasks": 1,
+      "n_eval_docs": 2376,
+      "n_duplicates_dropped": 0,
+      "n_kept": 2376,
+      "cap": null,
+      "splits": {
+        "train": 1426,
+        "val": 475,
+        "test": 475
+      },
+      "metric": "acc",
+      "num_fewshot": 0,
+      "gen_filter": null,
+      "dataset": {
+        "path": "allenai/ai2_arc",
+        "name": "ARC-Easy",
+        "hub_sha": "210d026faf9955653af8916fad021475a3f00453"
+      }
+    },
+    "boolq": {
+      "lm_eval_name": "boolq",
+      "n_leaf_tasks": 1,
+      "n_eval_docs": 3270,
+      "n_duplicates_dropped": 0,
+      "n_kept": 3270,
+      "cap": null,
+      "splits": {
+        "train": 1962,
+        "val": 654,
+        "test": 654
+      },
+      "metric": "acc",
+      "num_fewshot": 0,
+      "gen_filter": null,
+      "dataset": {
+        "path": "aps/super_glue",
+        "name": "boolq",
+        "hub_sha": "3de24cf8022e94f4ee4b9d55a6f539891524d646"
+      }
+    },
+    "gsm8k": {
+      "lm_eval_name": "gsm8k",
+      "n_leaf_tasks": 1,
+      "n_eval_docs": 1319,
+      "n_duplicates_dropped": 0,
+      "n_kept": 1319,
+      "cap": null,
+      "splits": {
+        "train": 791,
+        "val": 264,
+        "test": 264
+      },
+      "metric": "exact_match",
+      "num_fewshot": 5,
+      "gen_filter": "flexible-extract",
+      "dataset": {
+        "path": "openai/gsm8k",
+        "name": "main",
+        "hub_sha": "740312add88f781978c0658806c59bc2815b9866"
+      }
+    },
+    "hellaswag": {
+      "lm_eval_name": "hellaswag",
+      "n_leaf_tasks": 1,
+      "n_eval_docs": 10042,
+      "n_duplicates_dropped": 0,
+      "n_kept": 4000,
+      "cap": 4000,
+      "splits": {
+        "train": 2400,
+        "val": 800,
+        "test": 800
+      },
+      "metric": "acc_norm",
+      "num_fewshot": 0,
+      "gen_filter": null,
+      "dataset": {
+        "path": "Rowan/hellaswag",
+        "name": null,
+        "hub_sha": "218ec52e09a7e7462a5400043bb9a69a41d06b76"
+      }
+    },
+    "mmlu": {
+      "lm_eval_name": "mmlu",
+      "n_leaf_tasks": 57,
+      "n_eval_docs": 14042,
+      "n_duplicates_dropped": 105,
+      "n_kept": 4000,
+      "cap": 4000,
+      "splits": {
+        "train": 2397,
+        "val": 803,
+        "test": 800
+      },
+      "metric": "acc",
+      "num_fewshot": 0,
+      "gen_filter": null,
+      "dataset": {
+        "path": "cais/mmlu",
+        "name": "57 configs",
+        "hub_sha": "c30699e8356da336a370243923dbaf21066bb9fe"
+      }
+    },
+    "piqa": {
+      "lm_eval_name": "piqa",
+      "n_leaf_tasks": 1,
+      "n_eval_docs": 1838,
+      "n_duplicates_dropped": 0,
+      "n_kept": 1838,
+      "cap": null,
+      "splits": {
+        "train": 1103,
+        "val": 368,
+        "test": 367
+      },
+      "metric": "acc",
+      "num_fewshot": 0,
+      "gen_filter": null,
+      "dataset": {
+        "path": "baber/piqa",
+        "name": null,
+        "hub_sha": "142f6d7367fd9877f0fb3b5734ea6a545f54cdd1"
+      }
+    },
+    "winogrande": {
+      "lm_eval_name": "winogrande",
+      "n_leaf_tasks": 1,
+      "n_eval_docs": 1267,
+      "n_duplicates_dropped": 0,
+      "n_kept": 1267,
+      "cap": null,
+      "splits": {
+        "train": 760,
+        "val": 253,
+        "test": 254
+      },
+      "metric": "acc",
+      "num_fewshot": 0,
+      "gen_filter": null,
+      "dataset": {
+        "path": "allenai/winogrande",
+        "name": "winogrande_xl",
+        "hub_sha": "01e74176c63542e6b0bcb004dcdea22d94fb67b5"
+      }
+    }
+  },
+  "n_total": 19242,
+  "splits_total": {
+    "train": 11542,
+    "test": 3849,
+    "val": 3851
+  },
+  "seed": 2026,
+  "split_fractions": [
+    0.6,
+    0.2,
+    0.2
+  ],
+  "lm_eval_version": "0.4.13",
+  "files": {
+    "query_pool.parquet": "c4a9f932b3b79fc3cc70a5e6c4e1350231c92c4e76545a7c994875f7fbfd3656",
+    "splits/train.txt": "18a641e1c24843de32b64edbe1ddab8092dffb432bbb06bf6023ffe1229b14a5",
+    "splits/val.txt": "1d7623ecd5e4e4ad03dbbcaab47be9c1a639236906520a63ac1ff2492e06f4f4",
+    "splits/test.txt": "bb9a584ffb6bbcc59ce3456d2c22376f447ba871736963219e5d3f41801bb276"
+  },
+  "run_id": "20261013-142932_build_pool"
+}
