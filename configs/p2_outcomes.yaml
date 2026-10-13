@@ -1,0 +1,27 @@
+# P2 step 2 (GPU): evaluate ONE variant on the whole query pool.
+# Run once per variant, e.g. --set variant.name=v0 (P1 adds the FLAP variants).
+phase: p2
+run_name: outcomes
+seed: 2026                  # also the lm-eval few-shot seed: must be identical for every variant
+require_gpu: false          # the Colab notebook passes --set require_gpu=true
+
+paths:
+  results_root: ${QACR_RESULTS_ROOT}
+
+pool:
+  path: data/p2/query_pool.parquet
+  splits: [train, val, test]
+  max_docs_per_task: null   # set a small number only for smoke tests
+
+variant:
+  name: v0
+  kind: hf
+  path: HuggingFaceTB/SmolLM2-1.7B
+  dtype: float16            # T4: float16 (no fast bfloat16 on Turing)
+
+lm_eval:
+  batch_size: 16
+  max_length: 2048
+  max_gen_toks: 256         # GSM8K generation cap
+
+tasks: null                 # null = every task in the pool

@@ -1,0 +1,22 @@
+# P2 step 1 (CPU): build the query pool and seeded train/val/test splits.
+# Task defaults (lm-eval task, primary metric, few-shot, caps) live in src/qacr/data/tasks.py.
+# Only the overrides below are applied; listing a task here with {} keeps its defaults.
+phase: p2
+run_name: build_pool
+seed: 2026
+
+paths:
+  results_root: ${QACR_RESULTS_ROOT}
+  publish_dir: data/p2            # canonical location read by later phases (relative to repo)
+
+split_fractions: [0.6, 0.2, 0.2]
+
+tasks:
+  arc_easy: {}
+  arc_challenge: {}
+  hellaswag: {}          # cap 4000 (default)
+  winogrande: {}
+  piqa: {}
+  boolq: {}
+  mmlu: {}               # cap 4000, proportional by subject (default)
+  gsm8k: {}              # 5-shot, correctness = flexible-extract exact match (default)

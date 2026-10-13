@@ -1,0 +1,11 @@
+# P2 step 1b (CPU): RouterBench external-difficulty labels for the published pool (P7 ablation input).
+phase: p2
+run_name: routerbench_labels
+seed: 2026
+
+paths:
+  results_root: ${QACR_RESULTS_ROOT}
+  publish_dir: data/p2
+
+routerbench:
+  download_dir: null        # null = <repo>/.cache/routerbench (git-ignored)
