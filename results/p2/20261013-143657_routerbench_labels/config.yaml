@@ -1,0 +1,8 @@
+phase: p2
+run_name: routerbench_labels
+seed: 2026
+paths:
+  results_root: null
+  publish_dir: data/p2
+routerbench:
+  download_dir: null

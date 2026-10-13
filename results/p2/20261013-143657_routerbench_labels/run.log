@@ -1,0 +1,10 @@
+2026-10-13 14:37:17 | INFO    | p2.routerbench | RouterBench 0-shot: (36497, 37) rows (revision 784021482c3f320c6619ed4b3bb3b41a21424fcb)
+2026-10-13 14:37:23 | INFO    | p2.routerbench | mmlu           pool= 4000 matched= 3981 ambiguous=19 rb_rows=14042
+2026-10-13 14:37:23 | INFO    | p2.routerbench | hellaswag      pool= 4000 matched= 4000 ambiguous=0 rb_rows=10042
+2026-10-13 14:37:23 | INFO    | p2.routerbench | winogrande     pool= 1267 matched= 1267 ambiguous=0 rb_rows=1267
+2026-10-13 14:37:23 | INFO    | p2.routerbench | arc_challenge  pool= 1172 matched= 1172 ambiguous=0 rb_rows=1470
+2026-10-13 14:37:23 | INFO    | p2.routerbench | gsm8k          pool= 1319 matched=    0 ambiguous=0 rb_rows=7450
+2026-10-13 14:37:23 | INFO    | p2.routerbench | arc_easy       pool= 2376 matched=    0 ambiguous=- rb_rows=0
+2026-10-13 14:37:23 | INFO    | p2.routerbench | boolq          pool= 3270 matched=    0 ambiguous=- rb_rows=0
+2026-10-13 14:37:23 | INFO    | p2.routerbench | piqa           pool= 1838 matched=    0 ambiguous=- rb_rows=0
+2026-10-13 14:37:23 | INFO    | p2.routerbench | published -> C:\All my stuff\Books\Thesis\flap-routing\data\p2

@@ -1,0 +1,76 @@
+{
+  "models": [
+    "WizardLM/WizardLM-13B-V1.2",
+    "claude-instant-v1",
+    "claude-v1",
+    "claude-v2",
+    "gpt-3.5-turbo-1106",
+    "gpt-4-1106-preview",
+    "meta/code-llama-instruct-34b-chat",
+    "meta/llama-2-70b-chat",
+    "mistralai/mistral-7b-chat",
+    "mistralai/mixtral-8x7b-chat",
+    "zero-one-ai/Yi-34B-Chat"
+  ],
+  "mmlu": {
+    "routerbench_rows": 14042,
+    "parse_failures": 1,
+    "pool_rows": 4000,
+    "matched": 3981,
+    "ambiguous": 19,
+    "match_rate": 0.99525
+  },
+  "hellaswag": {
+    "routerbench_rows": 10042,
+    "parse_failures": 0,
+    "pool_rows": 4000,
+    "matched": 4000,
+    "ambiguous": 0,
+    "match_rate": 1.0
+  },
+  "winogrande": {
+    "routerbench_rows": 1267,
+    "parse_failures": 0,
+    "pool_rows": 1267,
+    "matched": 1267,
+    "ambiguous": 0,
+    "match_rate": 1.0
+  },
+  "arc_challenge": {
+    "routerbench_rows": 1470,
+    "parse_failures": 0,
+    "pool_rows": 1172,
+    "matched": 1172,
+    "ambiguous": 0,
+    "match_rate": 1.0
+  },
+  "gsm8k": {
+    "routerbench_rows": 7450,
+    "parse_failures": 0,
+    "pool_rows": 1319,
+    "matched": 0,
+    "ambiguous": 0,
+    "match_rate": 0.0
+  },
+  "arc_easy": {
+    "routerbench_rows": 0,
+    "pool_rows": 2376,
+    "matched": 0,
+    "note": "task not in RouterBench"
+  },
+  "boolq": {
+    "routerbench_rows": 0,
+    "pool_rows": 3270,
+    "matched": 0,
+    "note": "task not in RouterBench"
+  },
+  "piqa": {
+    "routerbench_rows": 0,
+    "pool_rows": 1838,
+    "matched": 0,
+    "note": "task not in RouterBench"
+  },
+  "revision": "784021482c3f320c6619ed4b3bb3b41a21424fcb",
+  "sha256": "ba4f77f19517610a707c374e99322d7750c30fc4ae7ff5527888595a1e65d36d",
+  "n_labelled": 10420
+}
