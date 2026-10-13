@@ -112,10 +112,17 @@ def parse_mc_prompt(text: str) -> tuple[str, list[str]]:
 
 
 def parse_gsm8k_question(text: str) -> str:
-    """The target question is the LAST 'Question: ...' block (earlier ones are exemplars)."""
+    """Return the target question.
+
+    RouterBench's GSM8K prompt is a multi-element list whose LAST element is the bare question
+    (``prompt_text`` returns that element). If a 'Question:' label is present (single-string
+    prompts with inline exemplars), the target is the LAST such block.
+    """
     i = text.rfind("Question:")
     if i < 0:
-        raise ValueError("no 'Question:' in GSM8K prompt")
+        if not text.strip():
+            raise ValueError("empty GSM8K prompt")
+        return text.strip()
     q = text[i + len("Question:"):]
     j = q.find("\nAnswer")
     return (q[:j] if j >= 0 else q).strip()
@@ -131,11 +138,14 @@ def _hellaswag_pre(text: str) -> str:
 
 
 def match_key(task: str, stem: str, options: list[str] | None) -> str:
-    if task == "hellaswag":   # lm-eval rewrites the context, so key on preprocessed endings
-        return "\x1e".join(norm_text(_hellaswag_pre(o)) for o in options)
+    """Content key for matching. Options are SORTED: RouterBench shuffles answer order
+    relative to the source datasets (verified on Winogrande/MMLU/ARC). Its per-model scores
+    are correctness flags, so they do not depend on option order."""
     if task == "gsm8k":
         return norm_text(stem)
-    return norm_text(stem) + "\x1f" + "\x1e".join(norm_text(o) for o in options)
+    if task == "hellaswag":   # lm-eval rewrites the context, so key on preprocessed endings only
+        return "\x1e".join(sorted(norm_text(_hellaswag_pre(o)) for o in options))
+    return norm_text(stem) + "\x1f" + "\x1e".join(sorted(norm_text(o) for o in options))
 
 
 def model_columns(rb) -> list[str]:

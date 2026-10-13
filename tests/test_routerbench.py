@@ -72,3 +72,19 @@ def test_match_pool_and_ambiguity():
 def test_hellaswag_key_uses_lm_eval_preprocessing():
     raw = match_key("hellaswag", "ignored", ["Do it [title] now", "b"])
     assert raw == match_key("hellaswag", "different stem", ["Do it. now", "b"])
+
+
+def test_match_is_option_order_invariant():
+    # RouterBench shuffles options relative to the source dataset (seen on Winogrande/MMLU/ARC)
+    rb = pd.DataFrame({"sample_id": ["w.0"], "prompt": [str(["S _ x.\nA) Maria\nB) Sarah\nPrint"])],
+                       "eval_name": ["winogrande"], "m1": [1.0]})
+    pool = pd.DataFrame({"query_id": ["winogrande/winogrande/00000"], "task": ["winogrande"],
+                         "question_text": ["S _ x."], "choices": [["Sarah", "Maria"]]})
+    labels, rep = match_pool(pool, rb)
+    assert rep["winogrande"]["matched"] == 1
+
+
+def test_gsm8k_bare_last_element_prompt():
+    # RouterBench GSM8K prompts are a multi-element list; the last element is the bare question
+    raw = str(["TASK: examples...\nQuestion: ex?\nAnswer: 1", "How many clips did Natalia sell?"])
+    assert parse_gsm8k_question(prompt_text(raw)) == "How many clips did Natalia sell?"
