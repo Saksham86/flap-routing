@@ -35,8 +35,10 @@ def git_commit(repo: Path = REPO_ROOT) -> dict[str, Any]:
         return out.stdout.strip() if out.returncode == 0 else None
 
     commit = _git("rev-parse", "HEAD")
-    status = _git("status", "--porcelain")
-    return {"commit": commit, "dirty": bool(status) if status is not None else None}
+    # results/ holds run outputs (including the run being started), so it never counts as dirty
+    status = _git("status", "--porcelain", "--", ".", ":(exclude)results")
+    return {"commit": commit, "dirty": bool(status) if status is not None else None,
+            "dirty_files": status.splitlines()[:50] if status else []}
 
 
 def env_snapshot() -> dict[str, Any]:
@@ -116,6 +118,7 @@ def results_root(cfg: dict) -> Path:
 def start_run(cfg: dict, run_id: str | None = None, argv: list[str] | None = None) -> Run:
     """Create (or resume) the run directory and write config/meta/env files."""
     phase = str(cfg["phase"])
+    git_state = git_commit()  # read before this run writes anything
     if run_id is not None and not _RUN_ID_RE.match(run_id):
         raise ValueError(f"Invalid run_id {run_id!r}")
     resumed = run_id is not None
@@ -146,7 +149,7 @@ def start_run(cfg: dict, run_id: str | None = None, argv: list[str] | None = Non
         "seed": cfg["seed"],
         "started": _dt.datetime.now().isoformat(timespec="seconds"),
         "argv": argv if argv is not None else sys.argv,
-        "git": git_commit(),
+        "git": git_state,
         "resumed": resumed,
     })
     run.write_json("env.json", env_snapshot())
