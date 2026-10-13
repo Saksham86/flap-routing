@@ -7,7 +7,7 @@ _Last updated: 2026-10-13_
 |---|---|---|---|
 | P0 Setup | **Local work done; waiting for the Colab exit run** | No — needs `hello_gpu` PASSED on a Colab T4 with NVML readable | 0 |
 | P1 FLAP port + ladder | Not started (blocked on P0) | — | 0 |
-| P2 Query pool + outcomes | Not started | — | 0 |
+| P2 Query pool + outcomes | **CPU parts done on branch `p2-query-pool`**; GPU outcome runs pending (v0 after the P0 exit; v1–v3 after P1) | No — needs outcome runs for all 4 variants + headroom report | 0 |
 | P3 Routers | Not started | — | 0 |
 | P4 Runtime + pipeline | Not started | — | 0 |
 | P5 Evaluation | Not started | — | 0 |
@@ -51,6 +51,66 @@ _Last updated: 2026-10-13_
 - `checks.nvml.counter_supported`: decides whether energy uses the NVML counter (preferred) or the sampler.
 - `checks.matmul.energy.counter_joules` vs `sampled_joules`: should agree within ~10%. If they don't, the sampler interval or counter granularity needs attention before P1 profiling.
 - `checks.pruned_shapes_*_float16`: the logit match must hold on CUDA fp16.
+
+## P2 — Query pool + outcome matrix (branch `p2-query-pool`)
+
+### Done (CPU, verified locally)
+- **Query pool** `data/p2/query_pool.parquet`: **19,242 queries**, seed 2026, built from lm-eval 0.4.13's own task objects. Run record: `results/p2/20261013-142932_build_pool/` (clean commit).
+
+  | task | eval docs | kept | train / val / test | primary metric | shots |
+  |---|---|---|---|---|---|
+  | arc_easy | 2376 | 2376 | 1426 / 475 / 475 | acc | 0 |
+  | arc_challenge | 1172 | 1172 | 703 / 234 / 235 | acc_norm | 0 |
+  | hellaswag | 10042 | 4000 (cap) | 2400 / 800 / 800 | acc_norm | 0 |
+  | winogrande | 1267 | 1267 | 760 / 253 / 254 | acc | 0 |
+  | piqa | 1838 | 1838 | 1103 / 368 / 367 | acc | 0 |
+  | boolq | 3270 | 3270 | 1962 / 654 / 654 | acc | 0 |
+  | mmlu | 14042 (105 exact dupes dropped) | 4000 (cap, by subject) | 2397 / 803 / 800 | acc | 0 |
+  | gsm8k | 1319 | 1319 | 791 / 264 / 264 | exact match, flexible-extract | 5 |
+  | **total** | | **19,242** | **11,542 / 3,851 / 3,849** | | |
+
+  - Splits are stratified per task (and per MMLU subject).
+  - Splits are deterministic: rebuilt twice, identical, and a task's split does not depend on which other tasks are built.
+  - Each row stores lm-eval's doc hash. The dataset Hub commit shas are in `manifest.json`, and publishing refuses if any is missing.
+- **Outcome pipeline** `scripts/p2_outcomes.py` (one variant per run, resumable per task). Verified end to end on CPU with SmolLM2-135M:
+  - every per-sample check passes (doc hash; recomputed acc/acc_norm equal lm-eval's; per-task mean equals lm-eval's aggregate);
+  - two runs are **bit-identical**: same prompts, including the GSM8K 5-shot exemplars, same outcomes, log-likelihood diff 0.0.
+- **RouterBench external labels** `data/p2/routerbench_labels.parquet`: **10,420 queries**.
+
+  | task | matched |
+  |---|---|
+  | HellaSwag | 4000/4000 |
+  | Winogrande | 1267/1267 |
+  | ARC-C | 1172/1172 |
+  | MMLU | 3981/4000 (19 ambiguous duplicates left unlabelled) |
+  | GSM8K | 0 — RouterBench used the GSM8K **train** split (7,450/7,473 train questions found, 0/1,319 test) |
+  | ARC-E, PIQA, BoolQ | none — not in RouterBench |
+
+  The pickle is loaded only through a whitelisted unpickler (11 pandas/numpy globals), pinned to revision `78402148` and SHA-256 `ba4f77f1…`.
+- Tests: **34 passed** (+1 opt-in real-file test, skipped unless QACR_ROUTERBENCH_PKL is set).
+
+### Problems found and fixed during P2 (each now has a test)
+1. lm-eval 0.4.13 maps `samples=` results back by position, which is only correct for **sorted** indices. The script enforces sorting, and the parser cross-checks doc hashes.
+2. RouterBench **shuffles answer options** relative to the source datasets. Order-sensitive matching had silently matched only ~4% (Winogrande exactly 50%). Keys are now order-invariant.
+3. RouterBench GSM8K prompts are `[exemplars, question]` lists, which caused 7,450 parse failures. Fixed.
+4. Run provenance recorded `dirty: true` for every run made inside the repo, because `results/` was counted. Fixed; the fix needs to reach `main` too (see below).
+5. Mixed column types (gold int vs str) broke the combined parquet. Outcomes now use one fixed schema.
+
+### Decisions made in P2 — please confirm (they define "correct")
+- Multiple-choice tasks are **0-shot**, as in the FLAP / LLM-Pruner papers.
+- Primary metric: **acc_norm** for HellaSwag and ARC-Challenge, **acc** elsewhere. Both are stored.
+- GSM8K: **5-shot** (lm-eval default). Correct = **flexible-extract** exact match, which is more robust to the format drift pruning may cause; strict-match is stored too. Generation is capped at **256 tokens**.
+- Caps: MMLU and HellaSwag **4000** each.
+
+### Next (GPU, Colab — after the P0 exit passes)
+- **v0 outcome run.** Notebook settings:
+  - `BRANCH = "p2-query-pool"`
+  - `SCRIPT = "scripts/p2_outcomes.py"`
+  - `CONFIG = "configs/p2_outcomes.yaml"`
+  - `EXTRA = "--set require_gpu=true"`
+- Expected load: ~59k log-likelihood requests plus 1,319 GSM8K generations. My guess is ~30–60 min on a T4; the run will measure it.
+- Sanity check: v0 scores should land near SmolLM2-1.7B's published base scores.
+- v1–v3 run the same way once P1 produces FLAP checkpoints (`variant.kind: flap`). Then build the outcome matrix and the **headroom report** (decision gate).
 
 ## Open issues / decisions
 - **Edge device** for latency/energy profiling: not chosen yet. Default assumption: the user's laptop CPU (Intel, 16 logical cores). Needed by P1 (profiling), not by P0.

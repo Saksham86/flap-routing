@@ -185,6 +185,16 @@ STATUS.md  requirements.txt  pyproject.toml
 - Local tests: `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest` (plugin autoload is disabled because the user's global site-packages has a broken `faker` pytest plugin).
 - Every run writes `config.yaml`, `meta.json` (git commit + dirty flag), `env.json`, `pip_freeze.txt` and `run.log`. Results only count if the run was made from a clean commit.
 
+## Known pitfalls (verified; do not reintroduce)
+- **lm-eval 0.4.13 `samples=`:** results are mapped back by position, so indices **must be sorted**. `scripts/p2_outcomes.py` sorts them and the parser checks doc hashes.
+- **GSM8K few-shot exemplars:** they depend on the few-shot seed **and** the evaluated doc list. Every variant must evaluate the identical sorted doc list with the same seed. `prompt_hash` is stored to verify this.
+- **RouterBench:**
+  - It is a pickle: load only via `qacr.data.routerbench.safe_load_pickle`, never `pd.read_pickle`.
+  - It shuffles answer options, so matching keys sort options.
+  - Its GSM8K items are from the train split, so they never match our test-split pool.
+- **Truncation:** lm-eval left-truncates over-long contexts. Outcome runs flag `n_truncation_risk` per task.
+- **Run provenance:** git state is read before the run dir is created, and `results/` is excluded from the dirty check.
+
 ## Phases
 
 | Phase | Weeks | GPU-h (est.) | Exit criterion |
