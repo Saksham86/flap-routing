@@ -99,3 +99,26 @@ def test_energy_meter_never_raises():
     if not m.available:
         assert r.available is False and r.notes
     m.close()
+
+
+def test_git_dirty_ignores_results_dir(tmp_path):
+    import subprocess
+
+    from qacr.common.run import git_commit
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    def git(*a):
+        subprocess.run(["git", *a], cwd=repo, check=True, capture_output=True)
+    git("init", "-q")
+    git("config", "user.email", "t@t")
+    git("config", "user.name", "t")
+    (repo / "a.py").write_text("x = 1\n")
+    git("add", "a.py")
+    git("commit", "-q", "-m", "init")
+    assert git_commit(repo)["dirty"] is False
+    (repo / "results" / "p0" / "run1").mkdir(parents=True)
+    (repo / "results" / "p0" / "run1" / "config.yaml").write_text("x: 1\n")
+    assert git_commit(repo)["dirty"] is False          # run outputs do not count
+    (repo / "a.py").write_text("x = 2\n")
+    st = git_commit(repo)
+    assert st["dirty"] is True and any("a.py" in f for f in st["dirty_files"])
