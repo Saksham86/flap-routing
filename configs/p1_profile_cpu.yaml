@@ -4,6 +4,7 @@ run_name: profile_cpu
 seed: 0
 device: cpu
 threads: null               # null = torch default (all physical cores)
+require_ac_power: true      # refuse to measure on battery (throttled, non-comparable timings)
 
 paths:
   results_root: ${QACR_RESULTS_ROOT}
@@ -18,5 +19,5 @@ variants: [none_0.00, flap_0.20, flap_0.35, flap_0.50]
 profile:
   prompt_lens: [128, 512]
   gen_tokens: 32
-  warmup: 1
-  reps: 3
+  warmup: 2
+  reps: 5

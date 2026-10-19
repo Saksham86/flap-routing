@@ -31,6 +31,23 @@ from qacr.pruning.flap import PrunePlan, apply_plan  # noqa: E402
 from qacr.runtime.variants import parse_dtype  # noqa: E402
 
 
+def power_state() -> dict:
+    """Windows only: AC/battery status and current CPU performance, so CPU timings carry their conditions.
+    Win32_Battery.BatteryStatus: 1 = discharging (on battery), 2 = on AC power (see Microsoft docs)."""
+    import subprocess
+    cmd = ("$b=(Get-CimInstance Win32_Battery | Select-Object -First 1 -ExpandProperty BatteryStatus);"
+           "$p=Get-CimInstance Win32_PerfFormattedData_Counters_ProcessorInformation -Filter \"Name='_Total'\";"
+           "Write-Output \"$b,$($p.PercentProcessorPerformance),$($p.ProcessorFrequency)\"")
+    try:
+        out = subprocess.run(["powershell", "-NoProfile", "-Command", cmd], capture_output=True, text=True,
+                             timeout=30).stdout.strip().splitlines()[-1]
+        b, perf, freq = out.split(",")
+        return {"battery_status": int(b) if b else None, "on_ac_power": (b == "2") if b else None,
+                "cpu_percent_performance": float(perf), "cpu_frequency_mhz": float(freq)}
+    except Exception as e:  # non-Windows or no battery
+        return {"error": repr(e)}
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", required=True)
@@ -62,9 +79,15 @@ def main(argv: list[str] | None = None) -> int:
         model = AutoModelForCausalLM.from_pretrained(cfg["base"]["path"], dtype=dtype).to(device).eval()
         if name != "none_0.00":
             apply_plan(model, PrunePlan.load(plans_dir / f"{name}.safetensors"), physical=True)
+        before = power_state() if device == "cpu" else None
+        if get_dotted(cfg, "require_ac_power", False) and before and before.get("on_ac_power") is False:
+            log.error("on battery power: CPU timings would not be comparable; plug in the charger")
+            close_logger(log)
+            return 3
         r = profile_model(model, device, model.config.vocab_size, prompt_lens=tuple(prof["prompt_lens"]),
                           gen_tokens=prof["gen_tokens"], warmup=prof["warmup"], reps=prof["reps"], seed=cfg["seed"],
                           energy_meter=meter)
+        r["power_before"], r["power_after"] = before, (power_state() if device == "cpu" else None)
         results[name] = r
         run.write_json("profiles.json", results)
         row = {"variant": name, "n_params": r["n_params"], "weight_gb": r["weight_bytes"] / 1024 ** 3,
