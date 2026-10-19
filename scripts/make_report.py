@@ -122,6 +122,62 @@ def label(name: str) -> str:
     return {"flap": "FLAP", "wanda_sp": "Wanda-SP", "mag_sp": "Mag-SP"}[m] + f" {float(r) * 100:.0f}\\%"
 
 
+def fmt_ppl(x: float) -> str:
+    if x < 1e4:
+        return f"{x:.2f}"
+    m, e = f"{x:.1e}".split("e")
+    return f"${m}\\times10^{{{int(e)}}}$"
+
+
+def p1_analysis(rows: list[dict], prof: dict) -> str:
+    """Analysis sentences; every number is computed here from sweep.csv / profiles.json."""
+    by = {(r["method"], round(float(r["ratio"]), 2)): r for r in rows}
+    ppl = lambda m, k: float(by[(m, k)]["ppl_wikitext2"])  # noqa: E731
+    base = ppl("none", 0.0)
+    ranks = [k for k in (0.2, 0.35, 0.5) if ("wanda_sp", k) in by and ("mag_sp", k) in by]
+    holds = all(ppl("flap", k) < ppl("wanda_sp", k) < ppl("mag_sp", k) for k in ranks)
+    flap_names = sorted((n for n in prof if n.startswith("flap_")), key=lambda n: float(n.split("_")[1]))
+    all_names = ["none_0.00"] + flap_names
+    dec = [prof[n]["generate"]["decode_ms_per_tok"] for n in all_names]
+    gen_lo = min(prof[n]["generate"]["min_ms"] for n in all_names)
+    gen_hi = max(prof[n]["generate"]["max_ms"] for n in all_names)
+    p0, p5 = prof["none_0.00"], prof["flap_0.50"]
+    pre = lambda p, L: p["prefill"][L]["median_ms"]  # noqa: E731
+    e0 = p0["energy"]["joules_per_generated_token"]
+    e5 = p5["energy"]["joules_per_generated_token"]
+    w0, w5 = p0["energy"]["mean_power_w"], p5["energy"]["mean_power_w"]
+    m0, m5 = p0["peak_mem_gb"], p5["peak_mem_gb"]
+    minh = int(by[("flap", 0.5)]["min_heads_in_a_layer"])
+    minh_w = int(by[("wanda_sp", 0.5)]["min_heads_in_a_layer"]) if ("wanda_sp", 0.5) in by else None
+    n_layers = 24
+    heads_total = int(by[("none", 0.0)]["heads_kept"]) // n_layers
+    s = "\\paragraph{Analysis.} "
+    s += ("\\emph{Quality.} " + ("At every ratio tested (" + ", ".join(f"{k * 100:.0f}\\%" for k in ranks) +
+          ") the ranking FLAP $<$ Wanda-SP $<$ Magnitude-SP in perplexity holds, as reported for LLaMA in the FLAP "
+          "paper. " if holds else "The FLAP $<$ Wanda-SP $<$ Magnitude-SP ranking does not hold at every ratio. "))
+    s += (f"FLAP's perplexity rises from {base:.2f} (unpruned) to {ppl('flap', 0.2):.2f} at 20\\% "
+          f"($\\times${ppl('flap', 0.2) / base:.2f}), {ppl('flap', 0.35):.2f} at 35\\% ($\\times${ppl('flap', 0.35) / base:.2f}) "
+          f"and {ppl('flap', 0.5):.2f} at 50\\% ($\\times${ppl('flap', 0.5) / base:.2f}); Wanda-SP reaches "
+          f"{ppl('wanda_sp', 0.5):.2f} at 50\\%, and Magnitude-SP is unusable at every ratio "
+          f"({fmt_ppl(ppl('mag_sp', 0.2))} already at 20\\%). FLAP's adaptive structure is visible in the plans: at 50\\% "
+          f"one layer keeps only {minh} of its {heads_total} heads, while the uniform baselines keep {minh_w} in every layer. ")
+    s += ("\\emph{Latency and energy on the T4.} Decode latency is essentially independent of the pruning ratio: "
+          f"{min(dec):.1f}--{max(dec):.1f}\\,ms per token from 0\\% to {float(flap_names[-1].split('_')[1]) * 100:.0f}\\% "
+          f"(all individual 64-token generations took {gen_lo / 1000:.2f}--{gen_hi / 1000:.2f}\\,s), so width pruning "
+          "does not shorten generation here. This is consistent with batch-1 decoding of a 1.7\\,B model on this GPU "
+          "being dominated by fixed per-step overheads rather than by the size of the weight matrices; the cause was "
+          "not measured directly. Prefill does become faster as prompts get longer: at 50\\% "
+          f"the 1024-token prefill drops from {pre(p0, '1024'):.1f} to {pre(p5, '1024'):.1f}\\,ms "
+          f"($-${(1 - pre(p5, '1024') / pre(p0, '1024')) * 100:.0f}\\%), the 512-token prefill from {pre(p0, '512'):.1f} "
+          f"to {pre(p5, '512'):.1f}\\,ms ($-${(1 - pre(p5, '512') / pre(p0, '512')) * 100:.0f}\\%), while the 128-token "
+          f"prefill barely changes ({pre(p0, '128'):.1f} vs.\\ {pre(p5, '128'):.1f}\\,ms). Energy per generated token "
+          f"falls from {e0:.2f} to {e5:.2f}\\,J ($-${(1 - e5 / e0) * 100:.0f}\\%) at 50\\% because the mean GPU power "
+          f"during generation drops from {w0:.1f} to {w5:.1f}\\,W at the same duration; peak GPU memory falls from "
+          f"{m0:.2f} to {m5:.2f}\\,GB. The latency benefit of width pruning on this GPU is therefore limited to prefill; "
+          "the energy and memory benefits are measurable. The laptop CPU is measured separately.\n\n")
+    return s
+
+
 def p1_section(src) -> tuple[str, dict]:
     facts: dict = {}
     s = "\\subsection{Pruned-variant ladder (P1)}\n"
@@ -130,21 +186,33 @@ def p1_section(src) -> tuple[str, dict]:
               "Colab T4; perplexity, parameter counts and GPU latency will be reported from "
               "\\texttt{results/p1/<run>/sweep.csv}.}\n\n")
     else:
-        rows = [r for r in read_csv(REPO / src["p1_sweep_dir"] / "sweep.csv") if r["status"] == "ok"]
+        d = REPO / src["p1_sweep_dir"]
+        rows = [r for r in read_csv(d / "sweep.csv") if r["status"] == "ok"]
+        prof = json.loads((d / "profiles.json").read_text(encoding="utf-8"))
         facts["sweep"] = rows
         body = []
         for r in rows:
             name = f"{r['method']}_{float(r['ratio']):.2f}"
             body.append(f"{label(name)} & {float(r['achieved_ratio']) * 100:.1f} & {int(r['n_params']) / 1e9:.3f} & "
-                        f"{float(r['ppl_wikitext2']):.2f} & {float(r['prefill_ms_512']):.1f} & "
+                        f"{fmt_ppl(float(r['ppl_wikitext2']))} & {float(r['prefill_ms_512']):.1f} & "
                         f"{float(r['decode_ms_per_tok']):.1f} & "
                         + (f"{float(r['joules_per_token']):.3f}" if r.get("joules_per_token") else "--") + " \\\\")
+        analysis = p1_analysis(rows, prof)
         s += ("Table~\\ref{tab:sweep} lists every pruned variant produced on the T4. ``Achieved'' is the fraction of "
               "prunable (attention and MLP) parameters removed; embeddings are not pruned. Latency is batch-1 fp16.\n\n"
               "\\begin{table}[h]\\centering\\small\n\\begin{tabular}{lrrrrrr}\n\\toprule\n"
               "Variant & Achieved (\\%) & Params (B) & WikiText-2 PPL & Prefill 512 (ms) & Decode (ms/tok) & J/token \\\\\n"
               "\\midrule\n" + "\n".join(body) + "\n\\bottomrule\n\\end{tabular}\n"
-              "\\caption{FLAP sweep and baselines on SmolLM2-1.7B (Colab T4, fp16, batch 1).}\\label{tab:sweep}\n\\end{table}\n\n")
+              "\\caption{FLAP sweep and baselines on SmolLM2-1.7B (Colab T4, fp16, batch 1). Decode is per generated "
+              "token after a 128-token prompt; J/token is GPU energy (NVML counter) per generated token.}\\label{tab:sweep}\n"
+              "\\end{table}\n\n"
+              "\\begin{figure}[h]\\centering\n\\includegraphics[width=0.78\\linewidth]{figures/fig_ppl.pdf}\n"
+              "\\caption{WikiText-2 perplexity (log scale) against the fraction of prunable parameters removed.}"
+              "\\label{fig:ppl}\n\\end{figure}\n\n"
+              "\\begin{figure}[h]\\centering\n\\includegraphics[width=\\linewidth]{figures/fig_t4.pdf}\n"
+              "\\caption{FLAP variants on the T4 (batch 1, fp16): prefill latency for three prompt lengths, decode "
+              "latency per token, and GPU energy per generated token.}\\label{fig:t4}\n\\end{figure}\n\n"
+              + analysis)
     cpu = cpu_profiles(src)
     if cpu:
         body = []

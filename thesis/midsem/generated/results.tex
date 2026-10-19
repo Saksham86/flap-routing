@@ -2,21 +2,43 @@
 On the Colab Tesla T4 all environment checks passed: seeding reproduced identical tensors; a model whose layers have different numbers of heads and MLP channels plus compensation biases (the shape FLAP produces) gave the same logits whether pruned physically or by masking, in fp32 and fp16 and with eager and SDPA attention (maximum fp16 logit difference 0.0). The NVML energy counter is supported on the T4 and agrees with the independent 20\,ms power sampler to within 1.7\% at idle (30.2\,J vs.\ 30.7\,J over 3.0\,s, mean 10.2\,W) and 1.1\% under an fp16 matrix-multiply load (692.4\,J vs.\ 700.0\,J over 10.0\,s, mean 69.7\,W, 23.6\,TFLOPS). Energy figures in this work therefore use the counter.
 
 \subsection{Pruned-variant ladder (P1)}
-\pend{the FLAP sweep (ratios 0.1--0.6) and the Wanda-SP / Magnitude-SP baselines are running on the Colab T4; perplexity, parameter counts and GPU latency will be reported from \texttt{results/p1/<run>/sweep.csv}.}
-
-\paragraph{Edge device (laptop CPU).} Table~\ref{tab:cpu} gives batch-1 latency on the Intel i5-12500H in fp32 (median of 3 repetitions after one warm-up). CPU energy is not measured yet (no power measurement is implemented for this laptop).
+Table~\ref{tab:sweep} lists every pruned variant produced on the T4. ``Achieved'' is the fraction of prunable (attention and MLP) parameters removed; embeddings are not pruned. Latency is batch-1 fp16.
 
 \begin{table}[h]\centering\small
-\begin{tabular}{lrrrrr}
+\begin{tabular}{lrrrrrr}
 \toprule
-Variant & Params (B) & Weights (GB, fp32) & Prefill 128 (s) & Prefill 512 (s) & Decode (ms/tok) \\
+Variant & Achieved (\%) & Params (B) & WikiText-2 PPL & Prefill 512 (ms) & Decode (ms/tok) & J/token \\
 \midrule
-unpruned & 1.711 & 6.38 & 2.84 & 9.02 & 498 \\
+unpruned & 0.0 & 1.711 & 18.48 & 114.9 & 30.5 & 2.088 \\
+FLAP 10\% & 10.0 & 1.551 & 20.82 & 114.9 & 30.4 & 2.078 \\
+FLAP 20\% & 20.0 & 1.389 & 25.94 & 109.8 & 30.9 & 2.104 \\
+FLAP 30\% & 30.0 & 1.228 & 37.22 & 94.2 & 30.9 & 2.079 \\
+FLAP 35\% & 35.0 & 1.148 & 51.12 & 88.4 & 30.8 & 2.059 \\
+FLAP 40\% & 40.0 & 1.067 & 60.30 & 88.1 & 30.5 & 2.011 \\
+FLAP 50\% & 50.0 & 0.906 & 124.62 & 74.6 & 31.1 & 1.521 \\
+FLAP 60\% & 60.0 & 0.745 & 550.44 & 61.5 & 30.4 & 1.276 \\
+Wanda-SP 20\% & 19.7 & 1.394 & 34.77 & 107.0 & 30.2 & 2.076 \\
+Wanda-SP 35\% & 34.8 & 1.150 & 65.99 & 113.8 & 29.3 & 1.989 \\
+Wanda-SP 50\% & 50.0 & 0.906 & 549.25 & 60.7 & 29.4 & 1.500 \\
+Mag-SP 20\% & 19.7 & 1.394 & $5.3\times10^{6}$ & 108.0 & 29.2 & 2.003 \\
+Mag-SP 35\% & 34.8 & 1.150 & $4.0\times10^{8}$ & 113.4 & 29.6 & 2.012 \\
+Mag-SP 50\% & 50.0 & 0.906 & $1.3\times10^{10}$ & 59.1 & 29.6 & 1.469 \\
 \bottomrule
 \end{tabular}
-\caption{Laptop-CPU latency (fp32, batch 1, 12 threads).}\label{tab:cpu}
+\caption{FLAP sweep and baselines on SmolLM2-1.7B (Colab T4, fp16, batch 1). Decode is per generated token after a 128-token prompt; J/token is GPU energy (NVML counter) per generated token.}\label{tab:sweep}
 \end{table}
-\pend{CPU profiles of the pruned variants, which need the plans produced by the T4 sweep.}
+
+\begin{figure}[h]\centering
+\includegraphics[width=0.78\linewidth]{figures/fig_ppl.pdf}
+\caption{WikiText-2 perplexity (log scale) against the fraction of prunable parameters removed.}\label{fig:ppl}
+\end{figure}
+
+\begin{figure}[h]\centering
+\includegraphics[width=\linewidth]{figures/fig_t4.pdf}
+\caption{FLAP variants on the T4 (batch 1, fp16): prefill latency for three prompt lengths, decode latency per token, and GPU energy per generated token.}\label{fig:t4}
+\end{figure}
+
+\paragraph{Analysis.} \emph{Quality.} At every ratio tested (20\%, 35\%, 50\%) the ranking FLAP $<$ Wanda-SP $<$ Magnitude-SP in perplexity holds, as reported for LLaMA in the FLAP paper. FLAP's perplexity rises from 18.48 (unpruned) to 25.94 at 20\% ($\times$1.40), 51.12 at 35\% ($\times$2.77) and 124.62 at 50\% ($\times$6.74); Wanda-SP reaches 549.25 at 50\%, and Magnitude-SP is unusable at every ratio ($5.3\times10^{6}$ already at 20\%). FLAP's adaptive structure is visible in the plans: at 50\% one layer keeps only 4 of its 32 heads, while the uniform baselines keep 16 in every layer. \emph{Latency and energy on the T4.} Decode latency is essentially independent of the pruning ratio: 30.4--31.1\,ms per token from 0\% to 60\% (all individual 64-token generations took 1.89--2.19\,s), so width pruning does not shorten generation here. This is consistent with batch-1 decoding of a 1.7\,B model on this GPU being dominated by fixed per-step overheads rather than by the size of the weight matrices; the cause was not measured directly. Prefill does become faster as prompts get longer: at 50\% the 1024-token prefill drops from 227.7 to 141.7\,ms ($-$38\%), the 512-token prefill from 114.9 to 74.6\,ms ($-$35\%), while the 128-token prefill barely changes (32.9 vs.\ 28.7\,ms). Energy per generated token falls from 2.09 to 1.52\,J ($-$27\%) at 50\% because the mean GPU power during generation drops from 67.9 to 48.9\,W at the same duration; peak GPU memory falls from 6.48 to 5.00\,GB. The latency benefit of width pruning on this GPU is therefore limited to prefill; the energy and memory benefits are measurable. The laptop CPU is measured separately.
 
 \subsection{Accuracy and oracle headroom (P2)}
 \pend{per-variant accuracy on all 19{,}242 queries and the headroom analysis of Eq.~\eqref{eq:headroom}; the outcome runs for the unpruned model and the FLAP variants are queued on the T4 after the sweep.}
