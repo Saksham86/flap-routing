@@ -5,7 +5,7 @@ _Last updated: 2026-10-13_
 ## Phase overview
 | Phase | State | Exit criterion met? | GPU-h used |
 |---|---|---|---|
-| P0 Setup | **Local work done; waiting for the Colab exit run** | No — needs `hello_gpu` PASSED on a Colab T4 with NVML readable | 0 |
+| P0 Setup | **Done** (Colab exit run passed 2026-10-19) | **Yes** — `hello_gpu` passed on a Tesla T4, NVML counter supported | ~0.05 |
 | P1 FLAP port + ladder | Not started (blocked on P0) | — | 0 |
 | P2 Query pool + outcomes | **CPU parts done on branch `p2-query-pool`**; GPU outcome runs pending (v0 after the P0 exit; v1–v3 after P1) | No — needs outcome runs for all 4 variants + headroom report | 0 |
 | P3 Routers | Not started | — | 0 |
@@ -42,7 +42,13 @@ _Last updated: 2026-10-13_
 - Tests: **12/12 pass** (`PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest`).
 - `thesis/related_work_notes.md`: 18 references, metadata verified via the arXiv API and the PDFs' DOIs.
 
-### Remaining for the P0 exit
+### P0 exit run (Colab, Tesla T4) — run `results/p0/20261019-144313_hello_gpu` (values as printed by the notebook; zip to be imported)
+- All checks passed: seeding reproducible; pruned-shape smoke test passed on CUDA in fp32 and fp16, eager and sdpa (fp16 max logit diff 0.0); Hub config matches the plan.
+- NVML energy counter supported. It agrees with the 20 ms power sampler to within 1.7% (idle: 30.21 J vs 30.72 J over 3.0 s) and 1.1% (fp16 matmul load: 692.4 J vs 700.0 J over 10.0 s).
+- Idle power 10.2 W; matmul load mean 69.7 W (max 82.2 W); fp16 4096x4096 matmul: 23.6 TFLOPS.
+- Colab runtime: Python 3.13.
+
+### Remaining for the P0 exit (historical)
 1. User creates a **private GitHub repo** and pushes this repo (commands in the chat).
 2. User runs `notebooks/run_colab.ipynb` on a **T4** with the default P0 settings.
 3. Exit = `hello.json` with `"passed": true` on Drive, `checks.nvml.ok = true`, and the counter support recorded. Then import the zip into `results/p0/`.
