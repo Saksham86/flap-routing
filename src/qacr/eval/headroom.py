@@ -104,6 +104,33 @@ def analyze(outcomes: pd.DataFrame, cost_col: str = "cost_ms", order: list[str] 
     oracle_acc = float(any_correct.mean())
     hull_at_oracle = hull_accuracy(hull, oracle_cost)
 
+    # Per task: oracle vs. hull, and two references that separate real complementarity from noise:
+    #  independent_oracle = 1 - prod_v (1 - A_v): oracle accuracy IF the variants' errors were independent
+    #  chance = 1/k for k-option tasks: what pure guessing gets right
+    n_choices = (outcomes.drop_duplicates("query_id").set_index("query_id")["n_choices"].reindex(Y.index)
+                 if "n_choices" in outcomes.columns else None)
+    per_task_headroom = {}
+    for t in sorted(task.unique()):
+        m = (task == t).to_numpy()
+        Yt, Ct = Y.to_numpy()[m], C.to_numpy()[m]
+        st = [(float(Ct[:, i].mean()), float(Yt[:, i].mean()), v) for i, v in enumerate(variants)]
+        ht = upper_hull(st)
+        anyc = Yt.max(axis=1) == 1
+        pk = np.where(anyc, np.argmin(np.where(Yt == 1, Ct, np.inf), axis=1), np.argmin(Ct, axis=1))
+        oc = float(Ct[np.arange(len(pk)), pk].mean())
+        ha = hull_accuracy(ht, oc)
+        accs = np.array([s[1] for s in st])
+        k = None
+        if n_choices is not None:
+            kk = n_choices.to_numpy()[m]
+            k = float(np.mean(kk[kk > 0])) if (kk > 0).any() else None
+        per_task_headroom[t] = {
+            "n": int(m.sum()), "oracle_accuracy": float(anyc.mean()), "oracle_cost_ms": oc,
+            "hull_accuracy_at_oracle_cost": ha, "headroom_points": (float(anyc.mean()) - ha) if ha == ha else None,
+            "best_static_accuracy": float(accs.max()), "independent_oracle_accuracy": float(1 - np.prod(1 - accs)),
+            "chance_accuracy": (1.0 / k) if k else None,
+        }
+
     ref = variants[0]
     pair = {}
     for v in variants[1:]:
@@ -122,4 +149,6 @@ def analyze(outcomes: pd.DataFrame, cost_col: str = "cost_ms", order: list[str] 
         "hull_accuracy_at_oracle_cost": hull_at_oracle,
         "headroom_points": (oracle_acc - hull_at_oracle) if hull_at_oracle == hull_at_oracle else None,
         "pairwise_vs_reference": pair,
+        "per_task_headroom": per_task_headroom,
+        "independent_oracle_accuracy": float(1 - np.prod([1 - s["accuracy"] for s in static.values()])),
     }

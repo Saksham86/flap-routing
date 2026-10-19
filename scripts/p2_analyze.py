@@ -60,6 +60,7 @@ def main(argv: list[str] | None = None) -> int:
             raise ValueError(f"{d}: contains variants {got}, expected {v}")
         frames.append(df[df["query_id"].isin(keep)])
     out = pd.concat(frames, ignore_index=True)
+    out = out.merge(pool[["query_id", "n_choices"]], on="query_id", how="left", validate="many_to_one")
     log.info("outcomes: %d rows, %d queries, variants %s, splits %s", len(out), out["query_id"].nunique(), order, splits)
 
     # GSM8K prompts (few-shot exemplars) must be identical across variants

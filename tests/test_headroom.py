@@ -54,3 +54,14 @@ def test_query_costs_uses_ctx_and_gen():
                         "n_gen_tokens": [0, 10]})
     prof = {"v": {"prefill_lengths": [128, 512], "prefill_ms": [10.0, 40.0], "decode_ms_per_tok": 2.0}}
     assert list(query_costs(out, prof)) == [10.0, 60.0]
+
+
+def test_per_task_headroom_and_references():
+    df = _toy()
+    df["n_choices"] = 4
+    r = analyze(df, order=["v0", "v1"])
+    t = r["per_task_headroom"]["t"]
+    assert t["oracle_accuracy"] == 0.75 and t["best_static_accuracy"] == 0.5
+    assert t["independent_oracle_accuracy"] == pytest.approx(1 - 0.5 * 0.5)
+    assert t["chance_accuracy"] == 0.25
+    assert r["independent_oracle_accuracy"] == pytest.approx(0.75)
