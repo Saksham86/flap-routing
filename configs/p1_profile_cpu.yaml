@@ -1,0 +1,22 @@
+# P1 edge profile: laptop CPU (Intel i5-12500H, 15.6 GB RAM), batch 1, fp32.
+phase: p1
+run_name: profile_cpu
+seed: 0
+device: cpu
+threads: null               # null = torch default (all physical cores)
+
+paths:
+  results_root: ${QACR_RESULTS_ROOT}
+
+base:
+  path: HuggingFaceTB/SmolLM2-1.7B
+  dtype: float32            # fp16 matmuls are not accelerated on this CPU
+
+plans_dir: null             # set to the imported P1 run's plans/ directory
+variants: [none_0.00, flap_0.20, flap_0.35, flap_0.50]
+
+profile:
+  prompt_lens: [128, 512]
+  gen_tokens: 32
+  warmup: 1
+  reps: 3
