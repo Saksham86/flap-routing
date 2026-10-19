@@ -1,0 +1,20 @@
+phase: p1
+run_name: profile_cpu_v0
+seed: 0
+device: cpu
+threads: null
+paths:
+  results_root: null
+base:
+  path: HuggingFaceTB/SmolLM2-1.7B
+  dtype: float32
+plans_dir: unused
+variants:
+- none_0.00
+profile:
+  prompt_lens:
+  - 128
+  - 512
+  gen_tokens: 32
+  warmup: 1
+  reps: 3
