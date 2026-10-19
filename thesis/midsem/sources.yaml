@@ -1,0 +1,9 @@
+# Result files the mid-semester report is generated from (paths relative to the repo root).
+# A null entry means "not available yet": the report says so instead of showing a number.
+p0_hello: results/p0/20261019-144313_hello_gpu/hello_summary_from_notebook.json
+pool_manifest: data/p2/manifest.json
+routerbench_report: data/p2/routerbench_report.json
+p1_sweep_dir: null          # results/p1/<run_id>_flap_sweep   (Colab, T4)
+cpu_profile_dirs:           # laptop CPU profiles (one or more runs; later runs override earlier ones per variant)
+  - results/p1/20261019-201843_profile_cpu_v0
+p2_analysis_dir: null       # results/p2/<run_id>_analyze

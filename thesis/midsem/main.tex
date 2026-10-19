@@ -1,0 +1,334 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=2.3cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs,tabularx,multirow}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage[hidelinks]{hyperref}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage{enumitem}
+\setlist{nosep,leftmargin=*}
+\newtheorem{proposition}{Proposition}
+\newcommand{\pend}[1]{\textcolor{gray}{[pending: #1]}}
+
+% ---- fill in -------------------------------------------------------------------------
+\newcommand{\AUTHOR}{Saksham}
+\newcommand{\IDNO}{f20221310}
+\newcommand{\SUPERVISOR}{(Supervisor name)}
+% ---------------------------------------------------------------------------------------
+
+\title{Query-Adaptive Compression-Level Routing for Edge LLM Inference\\[4pt]
+\large B.Tech Thesis --- Mid-Semester Report}
+\author{\AUTHOR\ (\IDNO)\\ Supervisor: \SUPERVISOR\\ BITS Pilani}
+\date{19 October 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\input{generated/abstract.tex}
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+%=======================================================================================
+\section{Introduction}
+Small open language models (1--3\,B parameters) can now run on edge-class hardware, but every
+query is still answered with the same, fixed amount of computation. Structured pruning methods
+such as FLAP~\citep{an2024flap} and SliceGPT~\citep{ashkboos2024slicegpt} reduce that computation
+without retraining, but they fix one compression ratio at deployment time. Queries, however, differ
+in difficulty: a heavily pruned model may answer an easy question correctly and fail a hard one.
+
+This thesis studies whether choosing the compression level \emph{per query} pays off on edge
+hardware. We build a ladder of FLAP-pruned variants of one model (SmolLM2-1.7B~\citep{allal2025smollm2}),
+measure every variant on every query of a 19{,}242-question pool drawn from eight standard benchmarks,
+and ask how much accuracy-per-cost a router could gain over simply running one fixed variant.
+
+In the resource-management taxonomy of Walia et al.~\citep{walia2024survey}, the compression level is
+the resource being allocated and the router is a per-request scheduling/provisioning decision; that
+survey and the MCDS scheduler~\citep{tuli2022mcds} do not treat LLM-inference workloads.
+
+\paragraph{Status at mid-semester.} Phases 0 (infrastructure) and the CPU part of Phase 2 (query pool,
+scoring pipeline, external labels) are complete and verified. The FLAP port (Phase 1) is implemented
+and tested; its GPU sweep and the per-variant outcome runs are being executed on a Colab T4 at the
+time of writing. Section~\ref{sec:results} reports only numbers that exist in result files; everything
+else is marked as pending.
+
+\paragraph{Research questions.}
+\begin{enumerate}
+  \item[RQ1] Does FLAP give a useful accuracy--cost ladder on a $\sim$1.7\,B edge model, and does the
+  paper's ranking (FLAP $>$ Wanda-SP $>$ Magnitude-SP) hold at this scale?
+  \item[RQ2] How much can per-query choice of the compression level gain over the best fixed level
+  (oracle headroom)?
+  \item[RQ3] How much of that headroom does a cheap router recover, and does it beat routing on task type alone?
+  \item[RQ4] What are the end-to-end latency, energy and memory savings on a GPU and on a laptop CPU?
+\end{enumerate}
+RQ1--RQ2 are the subject of this report; RQ3--RQ4 are planned (Section~\ref{sec:plan}).
+
+%=======================================================================================
+\section{Related Work}
+\label{sec:related}
+\paragraph{Resource management at the edge.} Walia et al.~\citep{walia2024survey} survey AI-based
+resource management (provisioning, offloading, scheduling, placement, load balancing) in fog/edge
+systems; Tuli et al.~\citep{tuli2022mcds} schedule workflow DAGs with Monte-Carlo tree search and a
+learned surrogate. Neither addresses LLM inference.
+
+\paragraph{Retraining-free structured pruning.} FLAP~\citep{an2024flap} scores channels by the
+fluctuation of their inputs, chooses per-layer ratios through a global standardised threshold and adds
+a bias that compensates for the removed channels. SliceGPT~\citep{ashkboos2024slicegpt} rotates and
+deletes rows/columns. Wanda~\citep{sun2024wanda} (and its structured variant Wanda-SP, evaluated in
+FLAP) uses weight$\times$activation importance; LLM-Pruner~\citep{ma2023llmpruner} needs LoRA recovery.
+
+\paragraph{Input-adaptive and elastic compression.} PuDDing~\citep{wee2025pudding} trains a router that
+selects one of several \emph{depth}-pruned variants per prompt at a fixed sparsity.
+Instruction-Following Pruning~\citep{hou2025ifpruning} predicts per-prompt structured masks with a
+trained predictor. Flextron~\citep{cai2024flextron} and MatFormer~\citep{devvrit2024matformer} train
+nested elastic models. RAP~\citep{liu2025rap} uses reinforcement learning to choose a pruning policy
+from sequence length, batch size and the available memory budget.
+
+\paragraph{Query routing.} RouterBench~\citep{hu2024routerbench} benchmarks routing across 11 LLMs and
+evaluates routers against the convex hull of fixed models; RouteLLM~\citep{ong2024routellm} and Hybrid
+LLM~\citep{ding2024hybridllm} route between a strong and a weak model; ConsRoute~\citep{qiao2026consroute}
+and HybridFlow~\citep{dong2026hybridflow} route across device/edge/cloud model tiers.
+
+%=======================================================================================
+\section{Novelty and Positioning}
+Per-prompt selection among pruned variants is \emph{not} new: PuDDing~\citep{wee2025pudding} does it
+for depth pruning. The contribution claimed by this thesis is narrower:
+\begin{enumerate}
+  \item a \textbf{training-free} ladder of \textbf{nested} width-pruned (FLAP) variants of one model.
+  Nesting follows from FLAP's global threshold (Proposition~\ref{prop:nested}); it lets one copy of the
+  weights serve every variant;
+  \item choosing \textbf{how much} to compress per query (variable budget, cost-aware), rather than
+  \emph{which} structure to keep at a fixed budget (PuDDing, IFPruning) or reacting to memory pressure (RAP);
+  \item an \textbf{edge-hardware} measurement of when per-query compression routing pays off: oracle
+  headroom, router recovery and end-to-end latency/energy on a Colab T4 and on a laptop CPU.
+\end{enumerate}
+Prior routing work (RouterBench, RouteLLM, Hybrid LLM, ConsRoute, HybridFlow) routes between
+\emph{separate} models; pruned variants of one model are expected to fail on largely the same queries,
+so the headroom available to a router is an open empirical question (RQ2), not an assumption.
+
+%=======================================================================================
+\section{Problem Formulation}
+\label{sec:problem}
+Let $\mathcal{V}=\{v_0,\dots,v_K\}$ be pruned variants of one model, $v_0$ unpruned, ordered by cost.
+For a query set $Q$:
+\begin{itemize}
+  \item $Y_{q,v}\in\{0,1\}$: whether $v$ answers $q$ correctly (task-specific primary metric, Sec.~\ref{sec:data});
+  \item $c(q,v)$: the cost (latency in ms, or energy in J) of answering $q$ with $v$ on a given device.
+\end{itemize}
+A router is a map $\pi:Q\to\mathcal{V}$ with accuracy and cost
+\begin{equation}
+  A(\pi)=\frac1{|Q|}\sum_{q}Y_{q,\pi(q)},\qquad C(\pi)=\frac1{|Q|}\sum_q c\big(q,\pi(q)\big)+c_{\text{router}} .
+\end{equation}
+The goal is the accuracy--cost frontier: for a cost budget $B$, $\max_\pi A(\pi)$ s.t.\ $C(\pi)\le B$.
+Its Lagrangian relaxation gives the decision rule used by the learned router (Phase 3):
+\begin{equation}
+  \pi_\lambda(q)=\arg\max_{v\in\mathcal V}\;\hat p_v(q)-\lambda\,\tilde c(q,v),
+  \label{eq:router}
+\end{equation}
+where $\hat p_v(q)$ estimates $\Pr[Y_{q,v}=1\mid q]$ from features of the query text only, and sweeping
+$\lambda\ge0$ traces a curve rather than a single operating point.
+
+\paragraph{Reference points.} A fixed variant $v$ gives the point $(C_v,A_v)$. Randomly mixing two fixed
+variants with probability $\alpha$ gives $(\alpha C_v+(1-\alpha)C_{v'},\ \alpha A_v+(1-\alpha)A_{v'})$, so the
+upper concave envelope $H(\cdot)$ of the fixed points is achievable without looking at the query
+(RouterBench's baseline). The per-query \emph{oracle} picks the cheapest correct variant (the cheapest
+variant if none is correct):
+\begin{equation}
+  A_{\text{oracle}}=\frac1{|Q|}\sum_q\max_vY_{q,v},\qquad
+  \text{headroom}=A_{\text{oracle}}-H\!\left(C_{\text{oracle}}\right).
+  \label{eq:headroom}
+\end{equation}
+A router is useful only if its curve lies above $H$; the headroom bounds how far above it can be.
+
+%=======================================================================================
+\section{Solution Design}
+\label{sec:design}
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.92\linewidth]{figures/pipeline_v2.png}
+  \caption{Pipeline and phase dependencies. P0--P2 are covered in this report.}
+  \label{fig:pipeline}
+\end{figure}
+Figure~\ref{fig:pipeline} shows the pipeline.
+\begin{enumerate}
+  \item \textbf{Variant ladder (P1).} FLAP is computed once on the unpruned model; a pruning ratio $r$
+  then only selects a threshold. Each variant is stored as a \emph{plan}: per-layer head and channel keep
+  masks plus compensation biases ($\approx$0.6\,MB, \texttt{safetensors}), applied to the base weights at load time.
+  \item \textbf{Outcome matrix (P2).} Every variant is evaluated once on every query with
+  lm-evaluation-harness~\citep{gao2023lmeval}, recording correctness, the log-likelihood of every answer
+  option, prompt length and generated length. Routers are then evaluated offline by replaying this
+  matrix, so no GPU time is spent per router or per $\lambda$; live runs on a subset will confirm the replay.
+  \item \textbf{Routers (P3).} Rule-based, $k$NN, logistic-regression and MLP estimators of $\hat p_v(q)$ on
+  MiniLM embeddings plus length/math features, with the decision rule~\eqref{eq:router}; compared with fixed
+  variants, the random-mixture hull, a task-type router, a router trained on RouterBench's 11-LLM
+  correctness, and the oracle.
+  \item \textbf{Runtime (P4) and evaluation (P5).} A shared-weight runtime serves all variants from one
+  weight copy; deployment modes (shared / all resident / swap on demand) are compared under a memory budget.
+\end{enumerate}
+
+\paragraph{Engineering for correctness.} Every script is seeded and config-driven and writes its
+configuration, git commit (with a dirty flag), library versions and logs next to its results. The code
+base has 52 automated tests. Problems found and fixed during the work, each now covered by a test, are
+listed in Appendix~\ref{app:issues}.
+
+%=======================================================================================
+\section{Mathematical Basis}
+\label{sec:math}
+\subsection{FLAP importance, structure and compensation}
+For an output projection $W\in\mathbb R^{d\times m}$ (attention $o$-projection or MLP down-projection)
+with input channels $j=1..m$, FLAP accumulates over calibration samples $t=0..N-1$ (each a window of
+$T$ tokens, $x_{t,\cdot,j}$) a running mean $\bar x_j$ and a fluctuation $F_j$:
+\begin{align}
+  \bar x^{(t)}_j &= \tfrac{t}{t+1}\bar x^{(t-1)}_j+\tfrac{1}{t+1}\,\tfrac1T\textstyle\sum_{\tau}x_{t,\tau,j},\\
+  F^{(t)}_j &= \tfrac{t-1}{t}F^{(t-1)}_j+\tfrac1{t+1}\textstyle\sum_\tau\big(x_{t,\tau,j}-\bar x^{(t)}_j\big)^2,\qquad F^{(0)}_j=0 .
+\end{align}
+(The second line is what the official implementation computes: its ``previous mean'' is an alias of the
+updated mean, so both factors use $\bar x^{(t)}$; our port reproduces this and a unit test pins it.)
+The WIFV score is $S_j=F_j\,\lVert W_{:,j}\rVert_2^2$; attention scores are squared. Scores are standardised
+within each layer, $\hat S_j=(S_j-\mu_\ell)/\sigma_\ell$; a head's score is the mean of $\hat S$ over its
+$d_h$ channels. All heads and MLP channels of all layers are ranked together and the kept set is
+$\{u:\hat S_u>\tau(r)\}$, where $\tau(r)$ is chosen so that the kept parameter weight is closest to $(1-r)$ of
+the total, with weight $w_{\text{head}}=\lfloor 4d_h/3\rfloor$ per head and $1$ per MLP channel (a head owns
+$4d\,d_h$ parameters, a channel $3d$).
+
+Removing input channels $P$ of a linear layer changes its output $y=W_Kx_K+W_Px_P$; FLAP replaces the
+removed term by its calibration expectation, i.e.\ adds the bias
+\begin{equation}
+  b=W_{:,P}\,\bar x_P .
+\end{equation}
+
+\begin{proposition}[Nested variants]\label{prop:nested}
+With scores computed once on the unpruned model, the kept sets satisfy $K(r_2)\subseteq K(r_1)$ for
+$r_2\ge r_1$.
+\end{proposition}
+\begin{proof}
+The ranking does not depend on $r$. The cumulative kept weight is increasing along the ranking and the
+target $(1-r)\sum w$ decreases in $r$, so the selected rank index is non-increasing in $r$ and the
+threshold $\tau(r)$ (the score at that index, in descending order) is non-decreasing; a unit with
+$\hat S_u>\tau(r_2)$ also has $\hat S_u>\tau(r_1)$.
+\end{proof}
+Consequently variant $v_r$ is a sub-network of every less-pruned variant, and all variants can be served
+from one weight copy plus small per-variant bias vectors. The test suite checks nesting numerically.
+
+\paragraph{Parameter count.} With $h_\ell$ kept heads and $m_\ell$ kept MLP channels in layer $\ell$,
+the prunable parameters are $\sum_\ell\big(4\,d\,d_h\,h_\ell+3\,d\,m_\ell\big)$; embeddings are not pruned.
+
+\subsection{Cost and energy}
+Batch-1 latency of a query with $n$ prompt tokens and $g$ generated tokens on variant $v$ is modelled as
+\begin{equation}
+  c(q,v)=\mathrm{prefill}_v(n)+g\cdot\mathrm{decode}_v ,
+\end{equation}
+with $\mathrm{prefill}_v$ interpolated linearly between measured prompt lengths. Multiple-choice tasks are
+scored by log-likelihood, so $g=0$ for them. Energy is $E=\int P\,dt$, read as the difference of the NVML
+cumulative energy counter; a 20\,ms power sampler integrated by the trapezoid rule serves as a cross-check.
+
+\subsection{Metrics}
+Accuracy uses each task's primary metric (Sec.~\ref{sec:data}). For multiple-choice tasks with option
+log-likelihoods $\ell_i$ and character lengths $|o_i|$: $\mathrm{acc}=[\arg\max_i\ell_i=g]$,
+$\mathrm{acc\_norm}=[\arg\max_i\ell_i/|o_i|=g]$. Perplexity on WikiText-2 follows FLAP:
+non-overlapping 128-token windows, $\mathrm{PPL}=\exp\big(\frac{1}{NT}\sum_w T\cdot\overline{\mathrm{NLL}}_w\big)$.
+
+%=======================================================================================
+\section{Experimental Setup}
+\label{sec:setup}
+\begin{table}[h]
+\centering\small
+\begin{tabularx}{\linewidth}{lX}
+\toprule
+Base model & SmolLM2-1.7B (\texttt{HuggingFaceTB/SmolLM2-1.7B}, revision \texttt{effd688a}): Llama architecture, 24 layers,
+hidden 2048, 32 attention heads with 32 key/value heads (full multi-head attention), head dim 64, MLP 8192,
+no biases, tied embeddings, vocabulary 49{,}152; 1{,}711{,}376{,}384 parameters. \\
+GPU & Google Colab, NVIDIA Tesla T4 (16\,GB), fp16, Python 3.13. \\
+Edge device & Laptop CPU: Intel Core i5-12500H, 15.6\,GB RAM, Windows 11, PyTorch 2.7.0 (CPU), 12 threads, fp32. \\
+Software & transformers 5.17.0, lm-eval 0.4.13, datasets 5.0.1, accelerate 1.15.0, huggingface-hub 1.33.0
+(pinned; PyTorch is Colab's build, recorded per run). \\
+FLAP settings & As in the official code: WIFV metric, AL-AM structure, WikiText-2~\citep{merity2016wikitext} train
+calibration, 1024 windows of 128 tokens, seed 0; PPL with 128-token windows. Ratios 0.1--0.6. \\
+Baselines & Wanda-SP and Magnitude-SP at ratios 0.2, 0.35, 0.5 (uniform per layer; Wanda-SP calibrated on
+128 WikiText-2 windows instead of C4, so all methods see the same text). \\
+Latency protocol & Batch 1, random-token prompts of 128/512/1024 tokens (GPU) or 128/512 (CPU); 64 (GPU) or 32 (CPU)
+generated tokens with EOS suppressed; median over 10 (GPU) or 3 (CPU) repetitions after warm-up; CUDA-synchronised. \\
+Seeds & Pool/splits 2026; FLAP calibration 0; lm-eval few-shot seed 2026 for every variant. \\
+\bottomrule
+\end{tabularx}
+\caption{Experimental setup.}
+\end{table}
+
+%=======================================================================================
+\section{Datasets}
+\label{sec:data}
+\input{generated/pool_table.tex}
+
+The query pool is built from lm-eval's own task definitions, so document order, gold labels and prompts
+are exactly those that lm-eval evaluates; each row stores lm-eval's document hash and the outcome
+parser rejects any logged sample whose hash differs. Exact duplicates (same question and options) are
+dropped (105 in MMLU). MMLU~\citep{hendrycks2021mmlu} is capped at 4{,}000 questions allocated to subjects
+in proportion to their size, HellaSwag~\citep{zellers2019hellaswag} at 4{,}000 uniformly; the other tasks
+(ARC-Easy/Challenge~\citep{clark2018arc}, WinoGrande~\citep{sakaguchi2019winogrande}, PIQA~\citep{bisk2020piqa},
+BoolQ~\citep{clark2019boolq}, GSM8K~\citep{cobbe2021gsm8k}) are used in full. Each task (and each MMLU subject)
+is split 60/20/20 into train/validation/test with seed 2026; rebuilding the pool reproduces it exactly.
+
+\paragraph{Scoring.} Multiple-choice tasks are zero-shot and scored by option log-likelihood, with
+acc\_norm as the primary metric for HellaSwag and ARC-Challenge and acc elsewhere (the LLM-Pruner/FLAP
+reporting convention); both are stored. GSM8K is 5-shot with greedy generation capped at 256 tokens;
+an answer is correct if the extracted number matches (lm-eval's \emph{flexible-extract} filter); strict
+match is stored too.
+
+\paragraph{External difficulty labels (RouterBench).}
+\input{generated/routerbench_table.tex}
+
+%=======================================================================================
+\section{Results and Analysis}
+\label{sec:results}
+\input{generated/results.tex}
+
+%=======================================================================================
+\section{Conclusion and Plan}
+\label{sec:plan}
+\input{generated/conclusion.tex}
+
+\begin{table}[h]
+\centering\small
+\begin{tabular}{llp{9.2cm}}
+\toprule
+Phase & Weeks & Work \\
+\midrule
+P1 & (in progress) & Finish sweep analysis; choose the 4 variants; CPU profiles of all variants. \\
+P2 & next 2 weeks & Outcome runs for all variants (train/val/test); headroom report; decision gate (Eq.~\ref{eq:headroom}). \\
+P3 & weeks 8--10 & Routers (rule, $k$NN, LR, MLP; task-type and RouterBench-trained baselines); calibration; offline replay. \\
+P4 & weeks 11--14 & Shared-weight runtime; \texttt{Pipeline.run}; live validation of replay and cost model on T4 and laptop CPU. \\
+P5 & weeks 15--18 & Accuracy--cost curves, iso-accuracy savings, deployment modes under a memory budget, bootstrap CIs. \\
+P6 & weeks 19--20 & (Optional) confidence-based cascade as a RAP-style comparison. \\
+P7 & weeks 20--22 & Ablations and final thesis. \\
+\bottomrule
+\end{tabular}
+\caption{Remaining work.}
+\end{table}
+
+\appendix
+\section{Problems found and fixed}
+\label{app:issues}
+\begin{enumerate}
+  \item lm-eval 0.4.13 maps results selected with \texttt{samples=} back by position, which is correct only
+  for sorted indices; unsorted indices would silently attach results to the wrong questions. Indices are
+  now sorted and every sample's document hash is checked.
+  \item RouterBench shuffles answer options relative to the source datasets; order-sensitive matching
+  matched only $\approx$4\% of MMLU/HellaSwag/ARC questions and exactly 50\% of WinoGrande. Matching is now
+  order-invariant.
+  \item RouterBench stores GSM8K prompts as a list of exemplars followed by the question, which caused all
+  7{,}450 GSM8K prompts to fail parsing; after the fix, it was verified that RouterBench's GSM8K items are
+  the GSM8K \emph{train} split (7{,}450 of 7{,}473 found; 0 of 1{,}319 test questions).
+  \item Runs made inside the repository were recorded as having uncommitted changes because the run's own
+  output folder was counted; the git state is now read before the run folder is created.
+  \item The official FLAP code hard-codes head dimension 128 and the head weight $512/3$ (LLaMA-7B values) and
+  writes to bias tensors that bias-free models do not have; the port generalises all three.
+\end{enumerate}
+
+\bibliographystyle{plainnat}
+\bibliography{refs}
+\end{document}

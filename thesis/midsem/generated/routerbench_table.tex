@@ -1,0 +1,19 @@
+RouterBench~\citep{hu2024routerbench} (0-shot file, revision \texttt{78402148}, SHA-256 \texttt{ba4f77f19517}\ldots) records whether each of 11 LLMs answered a prompt correctly. We attach the mean correctness over these models to our queries as an \emph{external} difficulty label, used only in a later ablation. The file is a Python pickle; it is loaded with a restricted unpickler that permits only 11 pandas/numpy reconstruction functions. Questions are matched by content with answer options sorted, because RouterBench shuffles option order. Queries whose key occurs in RouterBench with different scores are left unlabelled. In total 10{,}420 of our queries are labelled (Table~\ref{tab:rb}).
+
+\begin{table}[h]\centering\small
+\begin{tabular}{lrrrrl}
+\toprule
+Task & Pool & RouterBench rows & Matched & Ambiguous & Note \\
+\midrule
+HellaSwag & 4{,}000 & 10{,}042 & 4{,}000 & 0 &  \\
+WinoGrande & 1{,}267 & 1{,}267 & 1{,}267 & 0 &  \\
+ARC-Challenge & 1{,}172 & 1{,}470 & 1{,}172 & 0 &  \\
+MMLU & 4{,}000 & 14{,}042 & 3{,}981 & 19 &  \\
+GSM8K & 1{,}319 & 7{,}450 & 0 & 0 & RouterBench uses the GSM8K train split \\
+ARC-Easy & 2{,}376 & 0 & 0 & -- & task not in RouterBench \\
+PIQA & 1{,}838 & 0 & 0 & -- & task not in RouterBench \\
+BoolQ & 3{,}270 & 0 & 0 & -- & task not in RouterBench \\
+\bottomrule
+\end{tabular}
+\caption{Matching our pool to RouterBench.}\label{tab:rb}
+\end{table}

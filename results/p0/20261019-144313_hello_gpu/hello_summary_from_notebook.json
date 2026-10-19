@@ -1,0 +1,22 @@
+{
+ "_provenance": "Transcribed verbatim from the notebook cell-8 printout of hello.json pasted by the user on 2026-10-19 (tracebacks stripped by the notebook). Replace with the imported zip when available.",
+ "run_dir": "/content/drive/MyDrive/qacr/results/p0/20261019-144313_hello_gpu",
+ "device": "cuda",
+ "checks": {
+  "seeding": {"ok": true, "hashes": ["6c6f2603ad1721bb", "6c6f2603ad1721bb"], "reproducible": true},
+  "nvml": {"ok": true, "counter_supported": true, "device_name": "Tesla T4", "reason": null},
+  "idle_power": {"ok": true, "available": true, "duration_s": 3.008947304000003, "counter_joules": 30.206,
+                 "sampled_joules": 30.716288541411643, "mean_power_w": 10.22360918527583, "max_power_w": 11.052, "n_samples": 124, "notes": []},
+  "matmul": {"ok": true, "device": "cuda", "dtype": "torch.float16", "n": 4096, "iters": 1720, "elapsed_s": 10.037860813999941,
+             "tflops": 23.55033650617437,
+             "energy": {"available": true, "duration_s": 10.04800732000001, "counter_joules": 692.371, "sampled_joules": 699.9883261682628,
+                        "mean_power_w": 69.73456978265018, "max_power_w": 82.178, "n_samples": 405, "notes": []}},
+  "pruned_shapes_eager_float32": {"ok": true, "max_abs_logit_diff": 1.1920928955078125e-07, "tolerance": 0.0001, "logits_match": true, "generation_match": true, "passed": true},
+  "pruned_shapes_sdpa_float32": {"ok": true, "max_abs_logit_diff": 8.940696716308594e-08, "tolerance": 0.0001, "logits_match": true, "generation_match": true, "passed": true},
+  "pruned_shapes_eager_float16": {"ok": true, "max_abs_logit_diff": 0.0, "tolerance": 0.02, "logits_match": true, "generation_match": true, "passed": true},
+  "pruned_shapes_sdpa_float16": {"ok": true, "max_abs_logit_diff": 0.0, "tolerance": 0.02, "logits_match": true, "generation_match": true, "passed": true},
+  "hub": {"ok": true, "model_id": "HuggingFaceTB/SmolLM2-1.7B"}
+ },
+ "failed": [],
+ "passed": true
+}

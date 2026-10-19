@@ -1,0 +1,19 @@
+\begin{table}[h]\centering\small
+\begin{tabular}{lrrrcccl}
+\toprule
+Task & Eval docs & Dupes & Kept & Train / Val / Test & Metric & Shots & HF dataset \\
+\midrule
+ARC-Easy & 2{,}376 & 0 & 2{,}376 & 1{,}426 / 475 / 475 & acc & 0 & \texttt{allenai/ai2\_arc} \\
+ARC-Challenge & 1{,}172 & 0 & 1{,}172 & 703 / 234 / 235 & acc\_norm & 0 & \texttt{allenai/ai2\_arc} \\
+HellaSwag & 10{,}042 & 0 & 4{,}000 (cap 4{,}000) & 2{,}400 / 800 / 800 & acc\_norm & 0 & \texttt{Rowan/hellaswag} \\
+WinoGrande & 1{,}267 & 0 & 1{,}267 & 760 / 253 / 254 & acc & 0 & \texttt{allenai/winogrande} \\
+PIQA & 1{,}838 & 0 & 1{,}838 & 1{,}103 / 368 / 367 & acc & 0 & \texttt{baber/piqa} \\
+BoolQ & 3{,}270 & 0 & 3{,}270 & 1{,}962 / 654 / 654 & acc & 0 & \texttt{aps/super\_glue} \\
+MMLU & 14{,}042 & 105 & 4{,}000 (cap 4{,}000) & 2{,}397 / 803 / 800 & acc & 0 & \texttt{cais/mmlu} \\
+GSM8K & 1{,}319 & 0 & 1{,}319 & 791 / 264 / 264 & exact match & 5 & \texttt{openai/gsm8k} \\
+\midrule Total & & & 19{,}242 & 11{,}542 / 3{,}851 / 3{,}849 & & & \\
+\bottomrule
+\end{tabular}
+\caption{Query pool (lm-eval 0.4.13, seed 2026). Dataset revisions (Hub commit hashes) are recorded in \texttt{data/p2/manifest.json}.}}
+\label{tab:pool}
+\end{table}
