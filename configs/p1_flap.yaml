@@ -1,0 +1,34 @@
+# P1 (GPU): FLAP ratio sweep + Wanda-SP / Magnitude-SP baselines on SmolLM2-1.7B.
+phase: p1
+run_name: flap_sweep
+seed: 0
+require_gpu: false          # the Colab notebook passes --set require_gpu=true
+
+paths:
+  results_root: ${QACR_RESULTS_ROOT}
+  plans_export: ${QACR_PLANS_DIR}   # stable Drive path read by P2 runs (notebook sets it; unset locally = skip)
+
+base:
+  path: HuggingFaceTB/SmolLM2-1.7B
+  dtype: float16            # T4: fp16
+
+calibration:                # as in FLAP: WikiText-2 train, random 128-token windows, seed 0
+  nsamples: 1024
+  seqlen: 128
+  seed: 0
+
+ppl:
+  batch_size: 16            # same value as FLAP's bs=1 loop (tested), just faster
+
+flap_ratios: [0.1, 0.2, 0.3, 0.35, 0.4, 0.5, 0.6]
+
+baselines:
+  methods: [wanda_sp, mag_sp]
+  ratios: [0.2, 0.35, 0.5]
+  wanda_nsamples: 128
+
+profile:                    # batch-1 latency on this device
+  prompt_lens: [128, 512, 1024]
+  gen_tokens: 64
+  warmup: 3
+  reps: 10

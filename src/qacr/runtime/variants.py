@@ -3,8 +3,9 @@
 Spec keys:
   name   variant id used in outcome tables, e.g. "v0", "flap_p20"
   kind   "hf"   -> any Hugging Face model id or local directory (v0 = unpruned base)
-         "flap" -> FLAP-pruned checkpoint (implemented in P1)
+         "plan" -> base model ``path`` + pruning plan file ``plan`` (P1: FLAP / Wanda-SP / Mag-SP)
   path   model id or directory
+  plan   (kind "plan") path to a PrunePlan .safetensors file
   dtype  "float16" | "bfloat16" | "float32"   (T4 has no fast bf16: use float16 there)
 """
 from __future__ import annotations
@@ -34,8 +35,17 @@ def load_variant(spec: dict, device: str) -> tuple[Any, Any]:
         from transformers import AutoModelForCausalLM, AutoTokenizer
         tok = AutoTokenizer.from_pretrained(spec["path"], revision=spec.get("revision"))
         model = AutoModelForCausalLM.from_pretrained(spec["path"], revision=spec.get("revision"), dtype=dtype)
-    elif kind == "flap":
-        raise NotImplementedError("FLAP checkpoints are produced and loaded from P1 onwards")
+    elif kind == "plan":
+        # base model + a pruning plan (FLAP / Wanda-SP / Magnitude-SP) from P1
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+
+        from qacr.pruning.flap import PrunePlan, apply_plan
+        if "plan" not in spec:
+            raise KeyError("variant kind 'plan' needs a 'plan' path")
+        tok = AutoTokenizer.from_pretrained(spec["path"], revision=spec.get("revision"))
+        model = AutoModelForCausalLM.from_pretrained(spec["path"], revision=spec.get("revision"), dtype=dtype)
+        model.to(device)
+        apply_plan(model, PrunePlan.load(spec["plan"]), physical=True)
     else:
         raise ValueError(f"unknown variant kind {kind!r}")
     model.to(device).eval()
