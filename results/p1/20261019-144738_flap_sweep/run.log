@@ -1,0 +1,39 @@
+2026-10-19 14:48:48 | INFO    | p1 | base HuggingFaceTB/SmolLM2-1.7B loaded on cuda (torch.float16)
+2026-10-19 14:49:11 | INFO    | p1 | wikitext2: 1024 calibration windows x 128 tokens; test 304986 tokens (24s)
+2026-10-19 14:49:15 | INFO    | p1 | flap scores: layer 1/24
+2026-10-19 14:49:25 | INFO    | p1 | flap scores: layer 7/24
+2026-10-19 14:49:35 | INFO    | p1 | flap scores: layer 13/24
+2026-10-19 14:49:45 | INFO    | p1 | flap scores: layer 19/24
+2026-10-19 14:49:53 | INFO    | p1 | flap scores: layer 24/24
+2026-10-19 14:49:53 | INFO    | p1 | FLAP scores computed in 41.9s
+2026-10-19 14:51:27 | INFO    | p1 | [none_0.00] achieved=0.000 params=1.711B ppl=18.48 decode=30.51 ms/tok (94s)
+2026-10-19 14:53:03 | INFO    | p1 | [flap_0.10] achieved=0.100 params=1.551B ppl=20.82 decode=30.43 ms/tok (96s)
+2026-10-19 14:54:35 | INFO    | p1 | [flap_0.20] achieved=0.200 params=1.389B ppl=25.94 decode=30.87 ms/tok (92s)
+2026-10-19 14:55:58 | INFO    | p1 | [flap_0.30] achieved=0.300 params=1.228B ppl=37.22 decode=30.89 ms/tok (83s)
+2026-10-19 14:57:18 | INFO    | p1 | [flap_0.35] achieved=0.350 params=1.148B ppl=51.12 decode=30.82 ms/tok (80s)
+2026-10-19 14:58:37 | INFO    | p1 | [flap_0.40] achieved=0.400 params=1.067B ppl=60.30 decode=30.53 ms/tok (79s)
+2026-10-19 14:59:48 | INFO    | p1 | [flap_0.50] achieved=0.500 params=0.906B ppl=124.62 decode=31.12 ms/tok (71s)
+2026-10-19 15:00:53 | INFO    | p1 | [flap_0.60] achieved=0.600 params=0.745B ppl=550.44 decode=30.37 ms/tok (65s)
+2026-10-19 15:00:54 | INFO    | p1 | wanda-sp 0.2: layer 1/24
+2026-10-19 15:00:56 | INFO    | p1 | wanda-sp 0.2: layer 7/24
+2026-10-19 15:00:58 | INFO    | p1 | wanda-sp 0.2: layer 13/24
+2026-10-19 15:01:00 | INFO    | p1 | wanda-sp 0.2: layer 19/24
+2026-10-19 15:01:02 | INFO    | p1 | wanda-sp 0.2: layer 24/24
+2026-10-19 15:02:32 | INFO    | p1 | [wanda_sp_0.20] achieved=0.197 params=1.394B ppl=34.77 decode=30.19 ms/tok (99s)
+2026-10-19 15:02:33 | INFO    | p1 | wanda-sp 0.35: layer 1/24
+2026-10-19 15:02:35 | INFO    | p1 | wanda-sp 0.35: layer 7/24
+2026-10-19 15:02:37 | INFO    | p1 | wanda-sp 0.35: layer 13/24
+2026-10-19 15:02:39 | INFO    | p1 | wanda-sp 0.35: layer 19/24
+2026-10-19 15:02:41 | INFO    | p1 | wanda-sp 0.35: layer 24/24
+2026-10-19 15:04:14 | INFO    | p1 | [wanda_sp_0.35] achieved=0.348 params=1.150B ppl=65.99 decode=29.32 ms/tok (101s)
+2026-10-19 15:04:15 | INFO    | p1 | wanda-sp 0.5: layer 1/24
+2026-10-19 15:04:17 | INFO    | p1 | wanda-sp 0.5: layer 7/24
+2026-10-19 15:04:19 | INFO    | p1 | wanda-sp 0.5: layer 13/24
+2026-10-19 15:04:21 | INFO    | p1 | wanda-sp 0.5: layer 19/24
+2026-10-19 15:04:22 | INFO    | p1 | wanda-sp 0.5: layer 24/24
+2026-10-19 15:05:28 | INFO    | p1 | [wanda_sp_0.50] achieved=0.500 params=0.906B ppl=549.25 decode=29.40 ms/tok (74s)
+2026-10-19 15:06:58 | INFO    | p1 | [mag_sp_0.20] achieved=0.197 params=1.394B ppl=5269613.50 decode=29.23 ms/tok (90s)
+2026-10-19 15:08:31 | INFO    | p1 | [mag_sp_0.35] achieved=0.348 params=1.150B ppl=398162976.00 decode=29.64 ms/tok (93s)
+2026-10-19 15:09:37 | INFO    | p1 | [mag_sp_0.50] achieved=0.500 params=0.906B ppl=13085583360.00 decode=29.65 ms/tok (66s)
+2026-10-19 15:09:37 | INFO    | p1 | plans copied to /content/drive/MyDrive/qacr/plans
+2026-10-19 15:09:37 | INFO    | p1 | done: 14 rows

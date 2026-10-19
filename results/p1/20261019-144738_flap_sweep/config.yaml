@@ -1,0 +1,41 @@
+phase: p1
+run_name: flap_sweep
+seed: 0
+require_gpu: true
+paths:
+  results_root: /content/drive/MyDrive/qacr/results
+  plans_export: /content/drive/MyDrive/qacr/plans
+base:
+  path: HuggingFaceTB/SmolLM2-1.7B
+  dtype: float16
+calibration:
+  nsamples: 1024
+  seqlen: 128
+  seed: 0
+ppl:
+  batch_size: 16
+flap_ratios:
+- 0.1
+- 0.2
+- 0.3
+- 0.35
+- 0.4
+- 0.5
+- 0.6
+baselines:
+  methods:
+  - wanda_sp
+  - mag_sp
+  ratios:
+  - 0.2
+  - 0.35
+  - 0.5
+  wanda_nsamples: 128
+profile:
+  prompt_lens:
+  - 128
+  - 512
+  - 1024
+  gen_tokens: 64
+  warmup: 3
+  reps: 10
