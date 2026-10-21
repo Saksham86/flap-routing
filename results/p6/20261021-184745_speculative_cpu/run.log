@@ -1,0 +1,27 @@
+2026-10-21 18:52:33 | INFO    | p6.spec | [full_int8] prompt 0: base 29.2s spec 31.5s -> x0.93 | 3.76 tok/target-fwd | identical=True
+2026-10-21 18:53:22 | INFO    | p6.spec | [full_int8] prompt 1: base 25.3s spec 22.3s -> x1.13 | 4.27 tok/target-fwd | identical=True
+2026-10-21 18:55:24 | INFO    | p6.spec | [full_int8] prompt 2: base 34.4s spec 83.9s -> x0.41 | 3.20 tok/target-fwd | identical=True
+2026-10-21 18:57:13 | INFO    | p6.spec | [full_int8] prompt 3: base 37.7s spec 68.4s -> x0.55 | 2.56 tok/target-fwd | identical=True
+2026-10-21 18:58:49 | INFO    | p6.spec | [full_int8] prompt 4: base 36.5s spec 56.6s -> x0.64 | 3.20 tok/target-fwd | identical=True
+2026-10-21 19:00:20 | INFO    | p6.spec | [full_int8] prompt 5: base 42.5s spec 45.1s -> x0.94 | 3.05 tok/target-fwd | identical=True
+2026-10-21 19:01:47 | INFO    | p6.spec | [full_int8] prompt 6: base 41.2s spec 43.2s -> x0.95 | 3.05 tok/target-fwd | identical=True
+2026-10-21 19:03:24 | INFO    | p6.spec | [full_int8] prompt 7: base 41.0s spec 50.5s -> x0.81 | 2.67 tok/target-fwd | identical=True
+2026-10-21 19:03:24 | INFO    | p6.spec | [full_int8] SUMMARY median speedup x0.87 (95% CI 0.55-0.95), 3.22 tokens/target forward, identical 100%
+2026-10-21 19:07:02 | INFO    | p6.spec | [flap_0.20_int8] prompt 0: base 37.5s spec 43.9s -> x0.85 | 3.05 tok/target-fwd | identical=True
+2026-10-21 19:08:10 | INFO    | p6.spec | [flap_0.20_int8] prompt 1: base 36.2s spec 29.4s -> x1.23 | 3.76 tok/target-fwd | identical=True
+2026-10-21 19:09:25 | INFO    | p6.spec | [flap_0.20_int8] prompt 2: base 29.4s spec 42.4s -> x0.69 | 2.56 tok/target-fwd | identical=True
+2026-10-21 19:11:18 | INFO    | p6.spec | [flap_0.20_int8] prompt 3: base 32.8s spec 77.5s -> x0.42 | 2.00 tok/target-fwd | identical=True
+2026-10-21 19:12:59 | INFO    | p6.spec | [flap_0.20_int8] prompt 4: base 28.9s spec 67.4s -> x0.43 | 2.21 tok/target-fwd | identical=True
+2026-10-21 19:14:20 | INFO    | p6.spec | [flap_0.20_int8] prompt 5: base 32.7s spec 46.6s -> x0.70 | 2.46 tok/target-fwd | identical=True
+2026-10-21 19:16:08 | INFO    | p6.spec | [flap_0.20_int8] prompt 6: base 34.4s spec 70.3s -> x0.49 | 2.29 tok/target-fwd | identical=True
+2026-10-21 19:18:26 | INFO    | p6.spec | [flap_0.20_int8] prompt 7: base 48.4s spec 84.2s -> x0.57 | 2.21 tok/target-fwd | identical=True
+2026-10-21 19:18:26 | INFO    | p6.spec | [flap_0.20_int8] SUMMARY median speedup x0.63 (95% CI 0.46-0.85), 2.57 tokens/target forward, identical 100%
+2026-10-21 19:24:11 | INFO    | p6.spec | [flap_0.50_int8] prompt 0: base 35.7s spec 140.1s -> x0.25 | 1.00 tok/target-fwd | identical=True
+2026-10-21 19:27:06 | INFO    | p6.spec | [flap_0.50_int8] prompt 1: base 35.2s spec 137.4s -> x0.26 | 1.00 tok/target-fwd | identical=True
+2026-10-21 19:30:07 | INFO    | p6.spec | [flap_0.50_int8] prompt 2: base 36.5s spec 141.4s -> x0.26 | 1.00 tok/target-fwd | identical=True
+2026-10-21 19:33:29 | INFO    | p6.spec | [flap_0.50_int8] prompt 3: base 32.4s spec 164.1s -> x0.20 | 1.00 tok/target-fwd | identical=True
+2026-10-21 19:36:38 | INFO    | p6.spec | [flap_0.50_int8] prompt 4: base 35.0s spec 149.0s -> x0.23 | 1.00 tok/target-fwd | identical=True
+2026-10-21 19:39:58 | INFO    | p6.spec | [flap_0.50_int8] prompt 5: base 45.6s spec 150.9s -> x0.30 | 1.00 tok/target-fwd | identical=True
+2026-10-21 19:43:22 | INFO    | p6.spec | [flap_0.50_int8] prompt 6: base 36.6s spec 162.1s -> x0.23 | 1.00 tok/target-fwd | identical=True
+2026-10-21 19:46:23 | INFO    | p6.spec | [flap_0.50_int8] prompt 7: base 36.1s spec 142.2s -> x0.25 | 1.00 tok/target-fwd | identical=True
+2026-10-21 19:46:23 | INFO    | p6.spec | [flap_0.50_int8] SUMMARY median speedup x0.25 (95% CI 0.23-0.26), 1.00 tokens/target forward, identical 100%

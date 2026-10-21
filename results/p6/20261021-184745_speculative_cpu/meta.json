@@ -1,0 +1,17 @@
+{
+  "run_id": "20261021-184745_speculative_cpu",
+  "phase": "p6",
+  "seed": 0,
+  "started": "2026-10-21T18:47:45",
+  "argv": [
+    "scripts/p6_speculative.py",
+    "--config",
+    "configs/p6_speculative_cpu.yaml"
+  ],
+  "git": {
+    "commit": "6f73cc9b7167c59b5130729fe8b880de5d9585d5",
+    "dirty": false,
+    "dirty_files": []
+  },
+  "resumed": false
+}

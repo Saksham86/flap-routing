@@ -1,0 +1,52 @@
+{
+  "summary": {
+    "full_int8": {
+      "median_speedup": 0.8705012310180036,
+      "speedup_ci95": [
+        0.5519440811540876,
+        0.954237985910056
+      ],
+      "mean_tokens_per_target_forward": 3.219159663865546,
+      "identical_fraction": 1.0,
+      "n_prompts": 8,
+      "draft_spec": {
+        "name": "full_int8",
+        "dtype": "float32",
+        "int8": true
+      }
+    },
+    "flap_0.20_int8": {
+      "median_speedup": 0.6334548984410588,
+      "speedup_ci95": [
+        0.45878253947536074,
+        0.8526522442995907
+      ],
+      "mean_tokens_per_target_forward": 2.5666713475841263,
+      "identical_fraction": 1.0,
+      "n_prompts": 8,
+      "draft_spec": {
+        "name": "flap_0.20_int8",
+        "dtype": "float32",
+        "int8": true,
+        "plan": "results/p1/20261019-144738_flap_sweep/plans/flap_0.20.safetensors"
+      }
+    },
+    "flap_0.50_int8": {
+      "median_speedup": 0.25416304625761404,
+      "speedup_ci95": [
+        0.225436467391803,
+        0.2583430448465989
+      ],
+      "mean_tokens_per_target_forward": 1.0,
+      "identical_fraction": 1.0,
+      "n_prompts": 8,
+      "draft_spec": {
+        "name": "flap_0.50_int8",
+        "dtype": "float32",
+        "int8": true,
+        "plan": "results/p1/20261019-144738_flap_sweep/plans/flap_0.50.safetensors"
+      }
+    }
+  },
+  "config_note": "greedy; EOS suppressed"
+}
