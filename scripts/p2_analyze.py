@@ -26,10 +26,15 @@ from qacr.eval.headroom import analyze, query_costs  # noqa: E402
 
 
 def load_profiles(spec: dict, names: dict[str, str]) -> dict[str, dict]:
-    raw = json.loads((Path(spec["dir"]) / "profiles.json").read_text(encoding="utf-8"))
+    """spec: {"dir": run_dir} (one profile run for all variants) or additionally
+    {"per_variant_dirs": {variant: run_dir}} for variants profiled in other runs."""
+    cache: dict[str, dict] = {}
     out = {}
     for variant, pname in names.items():
-        p = raw[pname]
+        d = (spec.get("per_variant_dirs") or {}).get(variant, spec["dir"])
+        if d not in cache:
+            cache[d] = json.loads((Path(d) / "profiles.json").read_text(encoding="utf-8"))
+        p = cache[d][pname]
         lens = sorted(int(k) for k in p["prefill"])
         out[variant] = {"prefill_lengths": lens, "prefill_ms": [p["prefill"][str(L)]["median_ms"]
                                                                 if str(L) in p["prefill"] else p["prefill"][L]["median_ms"]
