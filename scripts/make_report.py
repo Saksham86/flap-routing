@@ -248,21 +248,81 @@ def p2_section(src) -> tuple[str, dict]:
     d = REPO / src["p2_analysis_dir"]
     acc = read_csv(d / "accuracy_table.csv")
     variants = [k for k in acc[0].keys() if k != "task"]
+    vname = lambda v: "unpruned" if v == "v0" else label(v)  # noqa: E731
     body = [f"{TASK_NAMES.get(r['task'], 'Macro average')} & " + " & ".join(f"{float(r[v]) * 100:.1f}" for v in variants)
             + " \\\\" for r in acc]
-    s += ("\\begin{table}[h]\\centering\\small\n\\begin{tabular}{l" + "r" * len(variants) + "}\n\\toprule\n"
-          "Task & " + " & ".join(label(v) if "_" in v else v for v in variants) + " \\\\\n\\midrule\n"
-          + "\n".join(body) + "\n\\bottomrule\n\\end{tabular}\n"
-          "\\caption{Accuracy (\\%) on the test split.}\\label{tab:acc}\n\\end{table}\n\n")
-    facts = {"acc": acc}
+    n_test = None
+    heads = {}
     for f in sorted(d.glob("headroom_*.json")):
         h = json.loads(f.read_text(encoding="utf-8"))
-        facts[f.stem] = h
-        s += (f"\\paragraph{{Headroom ({h['cost_model']} cost model).}} Oracle accuracy "
-              f"{h['oracle']['accuracy'] * 100:.1f}\\% at {h['oracle']['cost_ms']:.1f}\\,ms per query; the random-mixture "
-              f"hull reaches {h['hull_accuracy_at_oracle_cost'] * 100:.1f}\\% at that cost, so the headroom is "
-              f"{h['headroom_points'] * 100:.1f} points. {h['oracle']['unsolvable_share'] * 100:.1f}\\% of test queries "
-              "are answered correctly by no variant.\n\n")
+        heads[h["cost_model"]] = h
+        n_test = h["n_queries"]
+    s += ("Table~\\ref{tab:acc} gives the accuracy of each variant on the " + (fmt_int(n_test) if n_test else "")
+          + " test-split questions (primary metric per task, Sec.~\\ref{sec:data}).\n\n"
+          "\\begin{table}[h]\\centering\\small\n\\begin{tabular}{l" + "r" * len(variants) + "}\n\\toprule\n"
+          "Task & " + " & ".join(vname(v) for v in variants) + " \\\\\n\\midrule\n"
+          + "\n".join(body[:-1]) + "\n\\midrule\n" + body[-1] + "\n\\bottomrule\n\\end{tabular}\n"
+          "\\caption{Accuracy (\\%) on the test split.}\\label{tab:acc}\n\\end{table}\n\n")
+    facts = {"acc": acc, "headroom": heads}
+    if not heads:
+        return s, facts
+
+    # oracle / hull per cost model
+    rows = []
+    for label_, h in heads.items():
+        st = h["static"]
+        best = max(st.values(), key=lambda x: x["accuracy"])
+        rows.append(f"{tex_escape(label_)} & {h['oracle']['accuracy'] * 100:.1f} & {h['oracle']['cost_ms']:.1f} & "
+                    f"{h['hull_accuracy_at_oracle_cost'] * 100:.1f} & "
+                    + (f"{h['headroom_points'] * 100:.1f}" if h['headroom_points'] is not None else "--")
+                    + f" & {h['independent_oracle_accuracy'] * 100:.1f} & {best['accuracy'] * 100:.1f} & "
+                    f"{h['oracle']['unsolvable_share'] * 100:.1f} \\\\")
+    cost_rows = []
+    for v in variants:
+        cost_rows.append(f"{vname(v)} & " + " & ".join(f"{heads[k]['static'][v]['cost_ms']:.1f}" for k in heads) + " \\\\")
+    s += ("\\paragraph{Cost per query.} Table~\\ref{tab:cost} gives the mean modelled latency per test question "
+          "(Sec.~\\ref{sec:math}: measured prefill latency at the question's prompt length, plus measured decode latency "
+          "times the generated length for GSM8K).\n\n"
+          "\\begin{table}[h]\\centering\\small\n\\begin{tabular}{l" + "r" * len(heads) + "}\n\\toprule\n"
+          "Variant & " + " & ".join(f"{tex_escape(k)} (ms)" for k in heads) + " \\\\\n\\midrule\n"
+          + "\n".join(cost_rows) + "\n\\bottomrule\n\\end{tabular}\n"
+          "\\caption{Mean modelled latency per test question.}\\label{tab:cost}\n\\end{table}\n\n")
+    s += ("\\paragraph{Oracle headroom.} Table~\\ref{tab:headroom} compares the per-query oracle with the random-mixture "
+          "hull at the oracle's cost (Eq.~\\eqref{eq:headroom}). ``Independent'' is the oracle accuracy expected if the "
+          "variants' errors were statistically independent, $1-\\prod_v(1-A_v)$; an observed oracle well below it means "
+          "the variants tend to fail on the same questions.\n\n"
+          "\\begin{table}[h]\\centering\\small\n\\begin{tabular}{lrrrrrrr}\n\\toprule\n"
+          "Cost model & Oracle acc. & Oracle cost (ms) & Hull acc. & Headroom (pts) & Independent & Best fixed & "
+          "None correct (\\%) \\\\\n\\midrule\n" + "\n".join(rows) + "\n\\bottomrule\n\\end{tabular}\n"
+          "\\caption{Per-query oracle vs.\\ random-mixture hull on the test split (accuracies in \\%).}"
+          "\\label{tab:headroom}\n\\end{table}\n\n")
+
+    # per-task view (cost model independent for accuracies; headroom uses the first cost model)
+    first = next(iter(heads.values()))
+    pt = first["per_task_headroom"]
+    trows = []
+    for t in sorted(pt, key=lambda t: list(TASK_NAMES).index(t) if t in TASK_NAMES else 99):
+        x = pt[t]
+        trows.append(f"{TASK_NAMES.get(t, t)} & {x['n']} & {x['best_static_accuracy'] * 100:.1f} & "
+                     f"{x['oracle_accuracy'] * 100:.1f} & {x['independent_oracle_accuracy'] * 100:.1f} & "
+                     + (f"{x['chance_accuracy'] * 100:.1f}" if x.get("chance_accuracy") else "--") + " \\\\")
+    s += ("\\paragraph{Per task.} Table~\\ref{tab:pertask} separates the tasks. ``Chance'' is the accuracy of random "
+          "guessing among the answer options; on tasks where the variants are close to chance, part of the oracle's "
+          "gain comes from lucky guesses that no router can predict.\n\n"
+          "\\begin{table}[h]\\centering\\small\n\\begin{tabular}{lrrrrr}\n\\toprule\n"
+          "Task & $n$ & Best fixed & Oracle & Independent & Chance \\\\\n\\midrule\n" + "\n".join(trows)
+          + "\n\\bottomrule\n\\end{tabular}\n\\caption{Per-task accuracy (\\%) of the best fixed variant, the oracle, "
+          "the independence reference and chance, on the test split.}\\label{tab:pertask}\n\\end{table}\n\n")
+
+    pair = first["pairwise_vs_reference"]
+    prow = [f"{vname(v)} & {p['both_correct'] * 100:.1f} & {p['only_pruned_correct'] * 100:.1f} & "
+            f"{p['only_reference_correct'] * 100:.1f} & {p['both_wrong'] * 100:.1f} \\\\" for v, p in pair.items()]
+    s += ("\\paragraph{Agreement with the unpruned model.} Table~\\ref{tab:pair} shows, for each pruned variant, how "
+          "often it and the unpruned model are both right, only one of them is right, or both are wrong.\n\n"
+          "\\begin{table}[h]\\centering\\small\n\\begin{tabular}{lrrrr}\n\\toprule\n"
+          "Variant & Both right & Only pruned right & Only unpruned right & Both wrong \\\\\n\\midrule\n"
+          + "\n".join(prow) + "\n\\bottomrule\n\\end{tabular}\n\\caption{Outcome overlap with the unpruned model "
+          "(\\% of test questions).}\\label{tab:pair}\n\\end{table}\n\n")
     return s, facts
 
 
