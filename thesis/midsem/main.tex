@@ -9,6 +9,7 @@
 \usepackage[hidelinks]{hyperref}
 \usepackage[numbers,sort&compress]{natbib}
 \usepackage{enumitem}
+\usepackage[section]{placeins}  % keep each section's floats in that section
 \setlist{nosep,leftmargin=*}
 \newtheorem{proposition}{Proposition}
 \newcommand{\pend}[1]{\textcolor{gray}{[pending: #1]}}
@@ -148,7 +149,7 @@ A router is useful only if its curve lies above $H$; the headroom bounds how far
 %=======================================================================================
 \section{Solution Design}
 \label{sec:design}
-\begin{figure}[t]
+\begin{figure}[!htbp]
   \centering
   \includegraphics[width=0.92\linewidth]{figures/pipeline_v2.png}
   \caption{Pipeline and phase dependencies. P0--P2 are covered in this report.}
@@ -236,7 +237,7 @@ non-overlapping 128-token windows, $\mathrm{PPL}=\exp\big(\frac{1}{NT}\sum_w T\c
 %=======================================================================================
 \section{Experimental Setup}
 \label{sec:setup}
-\begin{table}[h]
+\begin{table}[!htbp]
 \centering\small
 \begin{tabularx}{\linewidth}{lX}
 \toprule
@@ -292,7 +293,7 @@ match is stored too.
 \label{sec:plan}
 \input{generated/conclusion.tex}
 
-\begin{table}[h]
+\begin{table}[!htbp]
 \centering\small
 \begin{tabular}{p{2.6cm}p{2.3cm}p{9.6cm}}
 \toprule

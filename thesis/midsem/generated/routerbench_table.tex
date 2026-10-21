@@ -1,6 +1,6 @@
 RouterBench~\citep{hu2024routerbench} (0-shot file, revision \texttt{78402148}, SHA-256 \texttt{ba4f77f19517}\ldots) records whether each of 11 LLMs answered a prompt correctly. We attach the mean correctness over these models to our queries as an \emph{external} difficulty label, used only in a later ablation. The file is a Python pickle; it is loaded with a restricted unpickler that permits only 11 pandas/numpy reconstruction functions. Questions are matched by content with answer options sorted, because RouterBench shuffles option order. Queries whose key occurs in RouterBench with different scores are left unlabelled. In total 10{,}420 of our queries are labelled (Table~\ref{tab:rb}).
 
-\begin{table}[h]\centering\small
+\begin{table}[!htbp]\centering\small
 \begin{tabular}{lrrrrl}
 \toprule
 Task & Pool & RouterBench rows & Matched & Ambiguous & Note \\

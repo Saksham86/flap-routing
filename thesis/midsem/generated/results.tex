@@ -4,7 +4,7 @@ On the Colab Tesla T4 all environment checks passed: seeding reproduced identica
 \subsection{Pruned-variant ladder (P1)}
 Table~\ref{tab:sweep} lists every pruned variant produced on the T4. ``Achieved'' is the fraction of prunable (attention and MLP) parameters removed; embeddings are not pruned. Latency is batch-1 fp16.
 
-\begin{table}[h]\centering\small
+\begin{table}[!htbp]\centering\small
 \begin{tabular}{lrrrrrr}
 \toprule
 Variant & Achieved (\%) & Params (B) & WikiText-2 PPL & Prefill 512 (ms) & Decode (ms/tok) & J/token \\
@@ -28,12 +28,12 @@ Mag-SP 50\% & 50.0 & 0.906 & $1.3\times10^{10}$ & 59.1 & 29.6 & 1.469 \\
 \caption{FLAP sweep and baselines on SmolLM2-1.7B (Colab T4, fp16, batch 1). Decode is per generated token after a 128-token prompt; J/token is GPU energy (NVML counter) per generated token.}\label{tab:sweep}
 \end{table}
 
-\begin{figure}[h]\centering
+\begin{figure}[!htbp]\centering
 \includegraphics[width=0.78\linewidth]{figures/fig_ppl.pdf}
 \caption{WikiText-2 perplexity (log scale) against the fraction of prunable parameters removed.}\label{fig:ppl}
 \end{figure}
 
-\begin{figure}[h]\centering
+\begin{figure}[!htbp]\centering
 \includegraphics[width=\linewidth]{figures/fig_t4.pdf}
 \caption{FLAP variants on the T4 (batch 1, fp16): prefill latency for three prompt lengths, decode latency per token, and GPU energy per generated token.}\label{fig:t4}
 \end{figure}
@@ -45,7 +45,7 @@ Mag-SP 50\% & 50.0 & 0.906 & $1.3\times10^{10}$ & 59.1 & 29.6 & 1.469 \\
 \subsection{Accuracy and oracle headroom (P2)}
 Table~\ref{tab:acc} gives the accuracy of each variant on the 3{,}849 test-split questions (primary metric per task, Sec.~\ref{sec:data}).
 
-\begin{table}[h]\centering\small
+\begin{table}[!htbp]\centering\small
 \begin{tabular}{lrrrr}
 \toprule
 Task & unpruned & FLAP 20\% & FLAP 35\% & FLAP 50\% \\
@@ -67,7 +67,7 @@ Macro average & 62.5 & 47.3 & 40.0 & 32.6 \\
 
 \paragraph{Cost per query.} Table~\ref{tab:cost} gives the mean modelled latency per test question (Sec.~\ref{sec:math}: measured prefill latency at the question's prompt length, plus measured decode latency times the generated length for GSM8K).
 
-\begin{table}[h]\centering\small
+\begin{table}[!htbp]\centering\small
 \begin{tabular}{lr}
 \toprule
 Variant & T4 GPU (ms) \\
@@ -83,7 +83,7 @@ FLAP 50\% & 577.0 \\
 
 \paragraph{Collapse of the pruned variants.} Accuracy alone hides how the pruned variants fail. Table~\ref{tab:collapse} gives, for every multiple-choice task, the share of questions on which each variant gives its single most frequent answer; 100\% means the variant answers every question identically (e.g.\ always ``A'' or always ``no''). The ``constant'' column is the accuracy of always giving the most common gold answer. On GSM8K (Table~\ref{tab:gsm8k}) the pruned variants mostly fail to finish an answer and generate until the 256-token limit.
 
-\begin{table}[h]\centering\small
+\begin{table}[!htbp]\centering\small
 \begin{tabular}{lrrrrr}
 \toprule
 Task & Constant & unpruned & FLAP 20\% & FLAP 35\% & FLAP 50\% \\
@@ -100,7 +100,7 @@ MMLU & 26.6 & 32 & 87 & 100 & 100 \\
 \caption{Share (\%) of test questions receiving each variant's most frequent answer, and the accuracy of the best constant answer.}\label{tab:collapse}
 \end{table}
 
-\begin{table}[h]\centering\small
+\begin{table}[!htbp]\centering\small
 \begin{tabular}{lrrrr}
 \toprule
 Variant & Accuracy (\%) & Mean tokens & Median tokens & At limit (\%) \\
@@ -116,7 +116,7 @@ FLAP 50\% & 1.1 & 256 & 256 & 100.0 \\
 
 \paragraph{Oracle headroom.} The plain oracle (Eq.~\eqref{eq:headroom}) counts a question as solved if any variant answers it correctly. When some variants answer every question identically, combining them ``solves'' questions that no router could identify (two variants that always answer ``yes'' and always answer ``no'' together cover all of BoolQ). We therefore also report an \emph{informative oracle}: on each task a variant may be chosen only if its accuracy beats the best constant answer (one-sided binomial test, $p<0.01$). Table~\ref{tab:headroom} gives both, with the accuracy expected if the variants' errors were independent, $1-\prod_v(1-A_v)$. Entries are accuracy (\%) @ mean cost per question (ms); accuracy here is over all test questions pooled, whereas Table~\ref{tab:acc} averages the eight tasks with equal weight, which is why unpruned shows 64.1 here and 62.5 there.
 
-\begin{table}[h]\centering\small
+\begin{table}[!htbp]\centering\small
 \begin{tabular}{lllll}
 \toprule
 Cost model & Best fixed & Oracle & Informative oracle & Independent \\
@@ -127,7 +127,7 @@ T4 GPU & unpruned: 64.1 @ 291.6 & 75.8 @ 290.1 & 66.1 @ 291.4 & 92.5 \\
 \caption{Best fixed variant, oracle and informative oracle on the test split.}\label{tab:headroom}
 \end{table}
 
-\begin{table}[h]\centering\small
+\begin{table}[!htbp]\centering\small
 \begin{tabularx}{\linewidth}{lrrrrrX}
 \toprule
 Task & $n$ & Constant & Best fixed & Oracle & Inf.\ oracle & Variants above the constant answer \\
@@ -147,7 +147,7 @@ GSM8K & 264 & -- & 31.8 & 36.0 & 36.0 & unpruned, FLAP 20\%, FLAP 35\%, FLAP 50\
 
 \paragraph{Agreement with the unpruned model.} Table~\ref{tab:pair} shows, for each pruned variant, how often it and the unpruned model are both right, only one of them is right, or both are wrong.
 
-\begin{table}[h]\centering\small
+\begin{table}[!htbp]\centering\small
 \begin{tabular}{lrrrr}
 \toprule
 Variant & Both right & Only pruned right & Only unpruned right & Both wrong \\
@@ -163,7 +163,7 @@ FLAP 50\% & 23.4 & 8.3 & 40.7 & 27.6 \\
 \subsection{Query-level confidence cascade (offline)}
 A cheap variant answers each multiple-choice question first; its answer is kept if its confidence (the probability of its chosen option) is at least $\tau$, otherwise the question is escalated to the unpruned model. The test questions are split into two fixed halves: $\tau$ is chosen on one half (largest share served within an accuracy-loss budget) and all numbers are reported on the other half. Escalated questions pay for both models, so the cascade is cheaper than the unpruned model only if the share served exceeds the cheap model's cost ratio.
 
-\begin{table}[h]\centering\small
+\begin{table}[!htbp]\centering\small
 \begin{tabular}{lrrlrr}
 \toprule
 Cheap variant & Budget (pts) & Served (\%) & Loss, pts (95\% CI) & T4 cost & Param.-ratio cost \\

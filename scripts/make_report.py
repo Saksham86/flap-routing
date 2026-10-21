@@ -54,11 +54,11 @@ def pool_table(src) -> str:
     st = m["splits_total"]
     total = (f"\\midrule Total & & & {fmt_int(m['n_total'])} & {fmt_int(st['train'])} / {fmt_int(st['val'])} / "
              f"{fmt_int(st['test'])} & & & \\\\")
-    return ("\\begin{table}[h]\\centering\\small\n\\begin{tabular}{lrrrcccl}\n\\toprule\n"
+    return ("\\begin{table}[!htbp]\\centering\\small\n\\begin{tabular}{lrrrcccl}\n\\toprule\n"
             "Task & Eval docs & Dupes & Kept & Train / Val / Test & Metric & Shots & HF dataset \\\\\n\\midrule\n"
             + "\n".join(rows) + "\n" + total + "\n\\bottomrule\n\\end{tabular}\n"
             f"\\caption{{Query pool (lm-eval {m['lm_eval_version']}, seed {m['seed']}). Dataset revisions (Hub commit "
-            "hashes) are recorded in \\texttt{data/p2/manifest.json}.}}\n\\label{tab:pool}\n\\end{table}\n")
+            "hashes) are recorded in \\texttt{data/p2/manifest.json}.}\n\\label{tab:pool}\n\\end{table}\n")
 
 
 def routerbench_table(src) -> str:
@@ -81,7 +81,7 @@ def routerbench_table(src) -> str:
             "because RouterBench shuffles option order. Queries whose key occurs in RouterBench with different "
             f"scores are left unlabelled. In total {fmt_int(r['n_labelled'])} of our queries are labelled "
             "(Table~\\ref{tab:rb}).\n\n"
-            "\\begin{table}[h]\\centering\\small\n\\begin{tabular}{lrrrrl}\n\\toprule\n"
+            "\\begin{table}[!htbp]\\centering\\small\n\\begin{tabular}{lrrrrl}\n\\toprule\n"
             "Task & Pool & RouterBench rows & Matched & Ambiguous & Note \\\\\n\\midrule\n" + "\n".join(lines)
             + "\n\\bottomrule\n\\end{tabular}\n\\caption{Matching our pool to RouterBench.}\\label{tab:rb}\n\\end{table}\n")
 
@@ -200,16 +200,16 @@ def p1_section(src) -> tuple[str, dict]:
         analysis = p1_analysis(rows, prof)
         s += ("Table~\\ref{tab:sweep} lists every pruned variant produced on the T4. ``Achieved'' is the fraction of "
               "prunable (attention and MLP) parameters removed; embeddings are not pruned. Latency is batch-1 fp16.\n\n"
-              "\\begin{table}[h]\\centering\\small\n\\begin{tabular}{lrrrrrr}\n\\toprule\n"
+              "\\begin{table}[!htbp]\\centering\\small\n\\begin{tabular}{lrrrrrr}\n\\toprule\n"
               "Variant & Achieved (\\%) & Params (B) & WikiText-2 PPL & Prefill 512 (ms) & Decode (ms/tok) & J/token \\\\\n"
               "\\midrule\n" + "\n".join(body) + "\n\\bottomrule\n\\end{tabular}\n"
               "\\caption{FLAP sweep and baselines on SmolLM2-1.7B (Colab T4, fp16, batch 1). Decode is per generated "
               "token after a 128-token prompt; J/token is GPU energy (NVML counter) per generated token.}\\label{tab:sweep}\n"
               "\\end{table}\n\n"
-              "\\begin{figure}[h]\\centering\n\\includegraphics[width=0.78\\linewidth]{figures/fig_ppl.pdf}\n"
+              "\\begin{figure}[!htbp]\\centering\n\\includegraphics[width=0.78\\linewidth]{figures/fig_ppl.pdf}\n"
               "\\caption{WikiText-2 perplexity (log scale) against the fraction of prunable parameters removed.}"
               "\\label{fig:ppl}\n\\end{figure}\n\n"
-              "\\begin{figure}[h]\\centering\n\\includegraphics[width=\\linewidth]{figures/fig_t4.pdf}\n"
+              "\\begin{figure}[!htbp]\\centering\n\\includegraphics[width=\\linewidth]{figures/fig_t4.pdf}\n"
               "\\caption{FLAP variants on the T4 (batch 1, fp16): prefill latency for three prompt lengths, decode "
               "latency per token, and GPU energy per generated token.}\\label{fig:t4}\n\\end{figure}\n\n"
               + analysis)
@@ -233,7 +233,7 @@ def p1_section(src) -> tuple[str, dict]:
         s += ("\\paragraph{Edge device (laptop CPU).} Table~\\ref{tab:cpu} gives batch-1 latency on the Intel "
               "i5-12500H in fp32 (median of 3 repetitions after one warm-up). "
               "CPU energy is not measured yet (no power measurement is implemented for this laptop).\n\n"
-              "\\begin{table}[h]\\centering\\small\n\\begin{tabular}{lrrrrr}\n\\toprule\n"
+              "\\begin{table}[!htbp]\\centering\\small\n\\begin{tabular}{lrrrrr}\n\\toprule\n"
               "Variant & Params (B) & Weights (GB, fp32) & Prefill 128 (s) & Prefill 512 (s) & Decode (ms/tok) \\\\\n"
               "\\midrule\n" + "\n".join(body) + "\n\\bottomrule\n\\end{tabular}\n"
               "\\caption{Laptop-CPU latency (fp32, batch 1, 12 threads).}\\label{tab:cpu}\n\\end{table}\n")
@@ -262,7 +262,7 @@ def p2_section(src) -> tuple[str, dict]:
         n_test = h["n_queries"]
     s += ("Table~\\ref{tab:acc} gives the accuracy of each variant on the " + (fmt_int(n_test) if n_test else "")
           + " test-split questions (primary metric per task, Sec.~\\ref{sec:data}).\n\n"
-          "\\begin{table}[h]\\centering\\small\n\\begin{tabular}{l" + "r" * len(variants) + "}\n\\toprule\n"
+          "\\begin{table}[!htbp]\\centering\\small\n\\begin{tabular}{l" + "r" * len(variants) + "}\n\\toprule\n"
           "Task & " + " & ".join(vname(v) for v in variants) + " \\\\\n\\midrule\n"
           + "\n".join(body[:-1]) + "\n\\midrule\n" + body[-1] + "\n\\bottomrule\n\\end{tabular}\n"
           "\\caption{Accuracy (\\%) on the test split.}\\label{tab:acc}\n\\end{table}\n\n")
@@ -283,7 +283,7 @@ def p2_section(src) -> tuple[str, dict]:
     s += ("\\paragraph{Cost per query.} Table~\\ref{tab:cost} gives the mean modelled latency per test question "
           "(Sec.~\\ref{sec:math}: measured prefill latency at the question's prompt length, plus measured decode latency "
           "times the generated length for GSM8K).\n\n"
-          "\\begin{table}[h]\\centering\\small\n\\begin{tabular}{l" + "r" * len(heads) + "}\n\\toprule\n"
+          "\\begin{table}[!htbp]\\centering\\small\n\\begin{tabular}{l" + "r" * len(heads) + "}\n\\toprule\n"
           "Variant & " + " & ".join(f"{tex_escape(k)} (ms)" for k in heads) + " \\\\\n\\midrule\n"
           + "\n".join(cost_rows) + "\n\\bottomrule\n\\end{tabular}\n"
           "\\caption{Mean modelled latency per test question.}\\label{tab:cost}\n\\end{table}\n\n")
@@ -307,11 +307,11 @@ def p2_section(src) -> tuple[str, dict]:
               "identically (e.g.\\ always ``A'' or always ``no''). The ``constant'' column is the accuracy of always "
               "giving the most common gold answer. On GSM8K (Table~\\ref{tab:gsm8k}) the pruned variants mostly fail "
               f"to finish an answer and generate until the {g[variants[0]]['cap']}-token limit.\n\n"
-              "\\begin{table}[h]\\centering\\small\n\\begin{tabular}{lr" + "r" * len(variants) + "}\n\\toprule\n"
+              "\\begin{table}[!htbp]\\centering\\small\n\\begin{tabular}{lr" + "r" * len(variants) + "}\n\\toprule\n"
               "Task & Constant & " + " & ".join(vname(v) for v in variants) + " \\\\\n\\midrule\n" + "\n".join(brows)
               + "\n\\bottomrule\n\\end{tabular}\n\\caption{Share (\\%) of test questions receiving each variant's most "
               "frequent answer, and the accuracy of the best constant answer.}\\label{tab:collapse}\n\\end{table}\n\n"
-              "\\begin{table}[h]\\centering\\small\n\\begin{tabular}{lrrrr}\n\\toprule\n"
+              "\\begin{table}[!htbp]\\centering\\small\n\\begin{tabular}{lrrrr}\n\\toprule\n"
               "Variant & Accuracy (\\%) & Mean tokens & Median tokens & At limit (\\%) \\\\\n\\midrule\n"
               + "\n".join(grows) + "\n\\bottomrule\n\\end{tabular}\n\\caption{GSM8K generation on the test split.}"
               "\\label{tab:gsm8k}\n\\end{table}\n\n")
@@ -327,7 +327,7 @@ def p2_section(src) -> tuple[str, dict]:
           f"with equal weight, which is why {vname(first['best_fixed']['variant'])} shows "
           f"{first['best_fixed']['accuracy'] * 100:.1f} here and "
           f"{float(next(r for r in acc if r['task'] == 'macro_avg')[first['best_fixed']['variant']]) * 100:.1f} there.\n\n"
-          "\\begin{table}[h]\\centering\\small\n\\begin{tabular}{lllll}\n\\toprule\n"
+          "\\begin{table}[!htbp]\\centering\\small\n\\begin{tabular}{lllll}\n\\toprule\n"
           "Cost model & Best fixed & Oracle & Informative oracle & Independent \\\\\n\\midrule\n" + "\n".join(rows)
           + "\n\\bottomrule\n\\end{tabular}\n\\caption{Best fixed variant, oracle and informative oracle on the test "
           "split.}\\label{tab:headroom}\n\\end{table}\n\n")
@@ -340,7 +340,7 @@ def p2_section(src) -> tuple[str, dict]:
                      + (f"{x['constant_baseline'] * 100:.1f}" if x["constant_baseline"] > 0 else "--")
                      + f" & {ph['best_static_accuracy'] * 100:.1f} & {ph['oracle_accuracy'] * 100:.1f} & "
                      f"{x['oracle_accuracy'] * 100:.1f} & {', '.join(inf)} \\\\")
-    s += ("\\begin{table}[h]\\centering\\small\n\\begin{tabularx}{\\linewidth}{lrrrrrX}\n\\toprule\n"
+    s += ("\\begin{table}[!htbp]\\centering\\small\n\\begin{tabularx}{\\linewidth}{lrrrrrX}\n\\toprule\n"
           "Task & $n$ & Constant & Best fixed & Oracle & Inf.\\ oracle & Variants above the constant answer \\\\\n"
           "\\midrule\n" + "\n".join(trows) + "\n\\bottomrule\n\\end{tabularx}\n\\caption{Per-task accuracy (\\%) on "
           "the test split.}\\label{tab:pertask}\n\\end{table}\n\n")
@@ -350,7 +350,7 @@ def p2_section(src) -> tuple[str, dict]:
             f"{p['only_reference_correct'] * 100:.1f} & {p['both_wrong'] * 100:.1f} \\\\" for v, p in pair.items()]
     s += ("\\paragraph{Agreement with the unpruned model.} Table~\\ref{tab:pair} shows, for each pruned variant, how "
           "often it and the unpruned model are both right, only one of them is right, or both are wrong.\n\n"
-          "\\begin{table}[h]\\centering\\small\n\\begin{tabular}{lrrrr}\n\\toprule\n"
+          "\\begin{table}[!htbp]\\centering\\small\n\\begin{tabular}{lrrrr}\n\\toprule\n"
           "Variant & Both right & Only pruned right & Only unpruned right & Both wrong \\\\\n\\midrule\n"
           + "\n".join(prow) + "\n\\bottomrule\n\\end{tabular}\n\\caption{Outcome overlap with the unpruned model "
           "(\\% of test questions).}\\label{tab:pair}\n\\end{table}\n\n")
@@ -376,7 +376,7 @@ def p6_section(src) -> str:
             "within an accuracy-loss budget) and all numbers are reported on the other half. Escalated questions pay for "
             "both models, so the cascade is cheaper than the unpruned model only if the share served exceeds the cheap "
             "model's cost ratio.\n\n"
-            "\\begin{table}[h]\\centering\\small\n\\begin{tabular}{lrrlrr}\n\\toprule\n"
+            "\\begin{table}[!htbp]\\centering\\small\n\\begin{tabular}{lrrlrr}\n\\toprule\n"
             "Cheap variant & Budget (pts) & Served (\\%) & Loss, pts (95\\% CI) & T4 cost & Param.-ratio cost \\\\\n"
             "\\midrule\n" + "\n".join(body) + "\n\\bottomrule\n\\end{tabular}\n"
             "\\caption{Confidence cascade on the held-out half of the multiple-choice test questions. Cost is relative to "
@@ -511,7 +511,7 @@ def conclusion(src) -> str:
             ("Query-level cascade", f"costs {casc_cost} the unpruned model on the T4", "negative"),
             ("Laptop-CPU latency", "not reliable enough to report", "pending"),
         ]
-        table = ("\\begin{table}[h]\\centering\\small\n\\begin{tabularx}{\\linewidth}{lXl}\n\\toprule\n"
+        table = ("\\begin{table}[!htbp]\\centering\\small\n\\begin{tabularx}{\\linewidth}{lXl}\n\\toprule\n"
                  "Finding & Evidence & Outcome \\\\\n\\midrule\n"
                  + "\n".join(f"{a} & {b} & {o} \\\\" for a, b, o in glance)
                  + "\n\\bottomrule\n\\end{tabularx}\n\\caption{Key findings at a glance.}\\label{tab:glance}\n"
