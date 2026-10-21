@@ -20,7 +20,8 @@
 \newcommand{\SUPERVISOR}{Prof.\ Hari Babu}
 % ---------------------------------------------------------------------------------------
 
-\title{Query-Adaptive Compression-Level Routing for Edge LLM Inference\\[4pt]
+\title{Query-Adaptive Compression-Level Routing for Edge LLM Inference:\\
+\Large When Does It Pay Off?\\[4pt]
 \large B.Tech Thesis --- Mid-Semester Report}
 \author{\AUTHOR\\ \small\texttt{\IDNO}\\[2pt] \normalsize Supervisor: \SUPERVISOR\\ BITS Pilani}
 \date{\today}
@@ -43,10 +44,21 @@ such as FLAP~\citep{an2024flap} and SliceGPT~\citep{ashkboos2024slicegpt} reduce
 without retraining, but they fix one compression ratio at deployment time. Queries, however, differ
 in difficulty: a heavily pruned model may answer an easy question correctly and fail a hard one.
 
-This thesis studies whether choosing the compression level \emph{per query} pays off on edge
-hardware. We build a ladder of FLAP-pruned variants of one model (SmolLM2-1.7B~\citep{allal2025smollm2}),
-measure every variant on every query of a 19{,}242-question pool drawn from eight standard benchmarks,
-and ask how much accuracy-per-cost a router could gain over simply running one fixed variant.
+Choosing the compression level \emph{per query} is attractive, but it rests on two assumptions that are
+usually taken for granted: that a heavily compressed variant of the model is still \emph{useful} on the
+queries routed to it, and that the hardware turns the smaller model into a real \emph{cost} saving. This
+thesis tests both assumptions on edge hardware. We build a ladder of FLAP-pruned variants of one model
+(SmolLM2-1.7B~\citep{allal2025smollm2}), measure every variant on every query of a 19{,}242-question pool
+drawn from eight standard benchmarks, and ask under which conditions a router can gain accuracy per cost
+over simply running one fixed variant.
+
+\paragraph{Core claim.} Per-query compression-level routing only pays off when (i)~the compression method
+produces a cheap tier that still carries information --- for training-free FLAP on a 1.7\,B model this
+means milder ratios (10--20\%) and in-domain calibration data --- and (ii)~the device turns fewer parameters
+into lower cost, which on a
+GPU at batch size~1 holds for prefill and energy but not for decoding. We measure the routing headroom with
+an oracle corrected for constant-answer artefacts; whether a realistic router captures it is the subject of
+the second half of the thesis.
 
 In the resource-management taxonomy of Walia et al.~\citep{walia2024survey}, the compression level is
 the resource being allocated and the router is a per-request scheduling/provisioning decision; that
@@ -60,14 +72,16 @@ exist in result files; everything else is marked as pending.
 
 \paragraph{Research questions.}
 \begin{enumerate}
-  \item[RQ1] Does FLAP give a useful accuracy--cost ladder on a $\sim$1.7\,B edge model, and does the
-  paper's ranking (FLAP $>$ Wanda-SP $>$ Magnitude-SP) hold at this scale?
-  \item[RQ2] How much can per-query choice of the compression level gain over the best fixed level
-  (oracle headroom)?
-  \item[RQ3] How much of that headroom does a cheap router recover, and does it beat routing on task type alone?
-  \item[RQ4] What are the end-to-end latency, energy and memory savings on a GPU and on a laptop CPU?
+  \item[RQ1] Can a training-free pruning method give a \emph{useful} ladder of compression levels for a
+  $\sim$1.7\,B edge model, and what does it need (method, calibration data)?
+  \item[RQ2] How much can a per-query choice of the compression level gain over the best fixed level once
+  artefacts such as constant-answer variants are removed (informative-oracle headroom)?
+  \item[RQ3] How much of that headroom does a realistic router recover, and does it beat routing on task type alone?
+  \item[RQ4] On which devices does compression turn into lower latency, energy and memory, and therefore
+  when can routing or cascading save cost?
 \end{enumerate}
-This report answers RQ1 and gives a first answer to RQ2 on the GPU; RQ3--RQ4 are planned (Section~\ref{sec:plan}).
+This report answers RQ1, answers RQ2 on the GPU and gives a first answer to RQ4 on the GPU; RQ3 and the
+CPU part of RQ4 are planned (Section~\ref{sec:plan}).
 
 %=======================================================================================
 \section{Related Work}
@@ -82,6 +96,9 @@ fluctuation of their inputs, chooses per-layer ratios through a global standardi
 a bias that compensates for the removed channels. SliceGPT~\citep{ashkboos2024slicegpt} rotates and
 deletes rows/columns. Wanda~\citep{sun2024wanda} (and its structured variant Wanda-SP, evaluated in
 FLAP) uses weight$\times$activation importance; LLM-Pruner~\citep{ma2023llmpruner} needs LoRA recovery.
+The choice of calibration data matters: Williams and Aletras~\citep{williams2024calibration} show that
+pruning is more sensitive to it than quantisation, and Bandari et al.~\citep{bandari2024c4} find that the
+common default (C4) is not always the best choice for LLM pruning.
 
 \paragraph{Input-adaptive and elastic compression.} PuDDing~\citep{wee2025pudding} trains a router that
 selects one of several \emph{depth}-pruned variants per prompt at a fixed sparsity.
@@ -98,19 +115,25 @@ and HybridFlow~\citep{dong2026hybridflow} route across device/edge/cloud model t
 %=======================================================================================
 \section{Novelty and Positioning}
 Per-prompt selection among pruned variants is \emph{not} new: PuDDing~\citep{wee2025pudding} does it
-for depth pruning. The contribution claimed by this thesis is narrower:
+for depth pruning. Nor is the observation that calibration data affects pruning
+\citep{williams2024calibration,bandari2024c4}. The contributions of this thesis are narrower:
 \begin{enumerate}
-  \item a \textbf{training-free} ladder of \textbf{nested} width-pruned (FLAP) variants of one model.
-  Nesting follows from FLAP's global threshold (Proposition~\ref{prop:nested}); it lets one copy of the
-  weights serve every variant;
-  \item choosing \textbf{how much} to compress per query (variable budget, cost-aware), rather than
-  \emph{which} structure to keep at a fixed budget (PuDDing, IFPruning) or reacting to memory pressure (RAP);
-  \item an \textbf{edge-hardware} measurement of when per-query compression routing pays off: oracle
-  headroom, router recovery and end-to-end latency/energy on a Colab T4 and on a laptop CPU.
+  \item \textbf{A usable training-free ladder for a small edge model.} We show that FLAP on a 1.7\,B model,
+  calibrated on Wikipedia as in the original method, collapses to constant answers on several tasks, and that
+  calibrating it on in-domain questions (train split, no answers) largely removes this collapse at 10--20\%.
+  The variants are \textbf{nested} (Proposition~\ref{prop:nested}), so one copy of the weights can serve all of them.
+  \item \textbf{An artefact-corrected measurement of routing headroom.} An \emph{informative oracle} that only
+  admits variants beating a constant answer, together with comparisons of ladders at matched ratios, separates
+  real headroom from constant-answer artefacts that make a naive oracle overstate it.
+  \item \textbf{An edge cost characterisation of compression-level routing.} On a GPU at batch size~1, width
+  pruning lowers prefill latency, energy and memory but not decode latency; a query-level cascade saves cost only
+  if the cheap tier serves more questions than its cost ratio, which we derive and measure. Choosing \emph{how
+  much} to compress per query (variable budget, cost-aware) differs from choosing \emph{which} structure to keep
+  at a fixed budget (PuDDing, IFPruning) or reacting to memory pressure (RAP).
 \end{enumerate}
 Prior routing work (RouterBench, RouteLLM, Hybrid LLM, ConsRoute, HybridFlow) routes between
-\emph{separate} models; pruned variants of one model are expected to fail on largely the same queries,
-so the headroom available to a router is an open empirical question (RQ2), not an assumption.
+\emph{separate} models; pruned variants of one model tend to fail on the same queries, so the headroom
+available to a router is an empirical question (RQ2) rather than an assumption.
 
 %=======================================================================================
 \section{Problem Formulation}

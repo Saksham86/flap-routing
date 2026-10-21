@@ -1,3 +1,5 @@
+\paragraph{Answer to the core question.} Per-query compression-level routing on edge hardware pays off only under two conditions, and this report measures both. First, the cheap tier must still carry information. The original 20/35/50\% ladder leaves only $+$1.9 points of informative headroom; including a milder 10\% variant raises the bound to $+$6.9 points (at 272\,ms per question), and in-domain calibration to $+$7.8 points at a lower cost (239\,ms). Second, the device must turn compression into cost savings: on the T4 at batch size~1 this holds for prefill, energy and memory but not for decoding. Whether a realistic router captures the bound, and whether the laptop CPU delivers the per-token savings the GPU does not, are the questions for the second half of the thesis.
+
 \begin{table}[!htbp]\centering\small
 \begin{tabularx}{\linewidth}{lXl}
 \toprule

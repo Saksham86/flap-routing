@@ -510,7 +510,9 @@ def _p2_numbers(src) -> dict | None:
 def abstract(src) -> str:
     m = load_json(src["pool_manifest"])
     n = _p1_numbers(src)
-    s = ("We study whether choosing an LLM's compression level per query pays off on edge hardware. We port FLAP, a "
+    s = ("Choosing an LLM's compression level per query promises cheaper edge inference, but it assumes that compressed "
+         "variants remain useful and that the hardware turns fewer parameters into lower cost. We test both assumptions. "
+         "We port FLAP, a "
          "retraining-free structured pruning method, to SmolLM2-1.7B and obtain a ladder of nested pruned variants of "
          "one model, stored as small pruning plans over a single copy of the weights. We build a "
          f"{fmt_int(m['n_total'])}-question pool from eight benchmarks with reproducible splits and a scoring pipeline "
@@ -528,8 +530,7 @@ def abstract(src) -> str:
               "collapse to a constant answer on MMLU and BoolQ and fail to finish GSM8K answers. A per-query oracle "
               f"over the variants reaches {p2['oracle']:.1f}\\% versus {p2['best']:.1f}\\% for the best fixed variant, but "
               f"once variants that do not beat a constant answer are excluded the gain shrinks to "
-              f"{p2['inf'] - p2['best']:.1f} points ({p2['inf']:.1f}\\%), so on this GPU the headroom for per-query "
-              "compression routing is small. ")
+              f"{p2['inf'] - p2['best']:.1f} points ({p2['inf']:.1f}\\%) for this 20/35/50\\% ladder. ")
         cal = _calib(src)
         if cal:
             rs = list(cal["ratios"])
@@ -538,6 +539,17 @@ def abstract(src) -> str:
                   + " points at " + "/".join(f"{float(r) * 100:.0f}" for r in rs) + "\\% "
                   f"(all McNemar $p\\le${max(cal['ratios'][r]['mcnemar_p'] for r in rs):.1e}) and largely removes the "
                   "constant-answer collapse at 10--20\\%. ")
+            lad = dict(_ladders(src))
+            if "D 10/20/35" in lad:
+                h = lad["D 10/20/35"]
+                io = h["informative_oracle"]
+                s += ("With a ladder of the unpruned model and in-domain-calibrated FLAP at 10/20/35\\%, the "
+                      f"informative oracle reaches {io['accuracy'] * 100:.1f}\\% at "
+                      f"{io['cost_ms']:.0f}\\,ms per question against {h['best_fixed']['accuracy'] * 100:.1f}\\% at "
+                      f"{h['static']['v0']['cost_ms']:.0f}\\,ms for the unpruned model, an upper bound for a realistic "
+                      "router. ")
+            s += ("Per-query compression-level routing therefore depends on in-domain calibration of the cheap tier and "
+                  "on a device that turns compression into cost savings. ")
         if not src.get("cpu_profile_dirs"):
             s += "Laptop-CPU latencies are pending. "
     else:
@@ -645,8 +657,23 @@ def conclusion(src) -> str:
                  + "\n".join(f"{a} & {b} & {o} \\\\" for a, b, o in glance)
                  + "\n\\bottomrule\n\\end{tabularx}\n\\caption{Key findings at a glance.}\\label{tab:glance}\n"
                  "\\end{table}\n\n")
+        core = ""
+        if cal and "D 10/20/35" in lad and "W 10/20/35" in lad:
+            h, hw = lad["D 10/20/35"], lad["W 10/20/35"]
+            io, iw = h["informative_oracle"], hw["informative_oracle"]
+            gain = lambda x, hh: (x["accuracy"] - hh["best_fixed"]["accuracy"]) * 100  # noqa: E731
+            core = ("\\paragraph{Answer to the core question.} Per-query compression-level routing on edge hardware "
+                    "pays off only under two conditions, and this report measures both. First, the cheap tier must still "
+                    "carry information. The original 20/35/50\\% ladder leaves only "
+                    f"$+${c['inf'] - c['best']:.1f} points of informative headroom; including a milder 10\\% variant raises "
+                    f"the bound to $+${gain(iw, hw):.1f} points (at {iw['cost_ms']:.0f}\\,ms per question), and in-domain "
+                    f"calibration to $+${gain(io, h):.1f} points at a lower cost ({io['cost_ms']:.0f}\\,ms). "
+                    "Second, the device must turn compression into cost savings: on the T4 at batch size~1 this "
+                    "holds for prefill, energy and memory but not for decoding. Whether a realistic router captures the "
+                    "bound, and whether the laptop CPU delivers the per-token savings the GPU does not, are the questions "
+                    "for the second half of the thesis.\n\n")
         return (
-            table +
+            core + table +
             "\\paragraph{What worked.}\n\\begin{itemize}\n"
             "\\item \\emph{FLAP reproduces on a small edge model.} On SmolLM2-1.7B the ranking FLAP $<$ Wanda-SP $<$ "
             "Magnitude-SP in perplexity holds at every ratio tested, as the FLAP paper reports for LLaMA models of 7\\,B "

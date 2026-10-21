@@ -1,4 +1,4 @@
-# Query-Adaptive Compression-Level Routing for Edge LLM Inference
+# Query-Adaptive Compression-Level Routing for Edge LLM Inference: When Does It Pay Off?
 
 **B.Tech Thesis — Mid-Semester Report**
 
@@ -11,15 +11,17 @@ Supervisor: **Prof. Hari Babu**, BITS Pilani
 
 ## Abstract
 
-We study whether choosing an LLM's compression level per query pays off on edge hardware. We port FLAP, a retraining-free structured pruning method, to SmolLM2-1.7B. This gives a ladder of nested pruned variants of one model, stored as small pruning plans over a single copy of the weights. We build a 19,242-question pool from eight benchmarks, with reproducible splits and a scoring pipeline that checks every result against the evaluation harness.
+Choosing an LLM's compression level per query promises cheaper edge inference. But it assumes two things: that compressed variants remain useful, and that the hardware turns fewer parameters into lower cost. We test both assumptions.
+
+We port FLAP, a retraining-free structured pruning method, to SmolLM2-1.7B. This gives a ladder of nested pruned variants of one model, stored as small pruning plans over a single copy of the weights. We build a 19,242-question pool from eight benchmarks, with reproducible splits and a scoring pipeline that checks every result against the evaluation harness.
 
 On a Tesla T4, FLAP raises WikiText-2 perplexity from 18.48 to 25.94 at 20% and to 124.62 at 50% of prunable parameters removed. Wanda-SP reaches 549.25 at 50%, and Magnitude-SP fails at every ratio, which reproduces the FLAP paper's method ranking at this scale. Pruning 50% cuts 1024-token prefill latency by 38% and energy per generated token by 27%. However, batch-1 decode latency stays at 30.4–31.1 ms per token for every ratio.
 
-On 3,849 test questions, macro accuracy falls from 62.5% (unpruned) to 47.3% (FLAP 20%), 40.0% (FLAP 35%) and 32.6% (FLAP 50%). Several pruned variants collapse to a constant answer on MMLU and BoolQ, and fail to finish GSM8K answers.
+On 3,849 test questions, macro accuracy falls from 62.5% (unpruned) to 47.3% (FLAP 20%), 40.0% (FLAP 35%) and 32.6% (FLAP 50%). Several pruned variants collapse to a constant answer on MMLU and BoolQ, and fail to finish GSM8K answers. A per-query oracle over the variants reaches 75.8%, against 64.1% for the best fixed variant. But once variants that do not beat a constant answer are excluded, the gain shrinks to 1.9 points (66.1%) for this 20/35/50% ladder.
 
-A per-query oracle over the variants reaches 75.8%, against 64.1% for the best fixed variant. But once variants that do not beat a constant answer are excluded, the gain shrinks to 1.9 points (66.1%). So on this GPU the headroom for per-query compression routing is small.
+Calibrating FLAP on train-split questions instead of Wikipedia, with no retraining, raises macro accuracy by 2.4, 5.2 and 4.3 points at 10/20/35% (all McNemar p ≤ 7.3e-08), and largely removes the constant-answer collapse at 10–20%. With a ladder of the unpruned model and in-domain-calibrated FLAP at 10/20/35%, the informative oracle reaches 71.9% at 239 ms per question, against 64.1% at 292 ms for the unpruned model. This is an upper bound for a realistic router.
 
-Calibrating FLAP on train-split questions instead of Wikipedia, with no retraining, raises macro accuracy by 2.4, 5.2 and 4.3 points at 10/20/35% (all McNemar p ≤ 7.3e-08), and largely removes the constant-answer collapse at 10–20%. Laptop-CPU latencies are pending.
+Per-query compression-level routing therefore depends on in-domain calibration of the cheap tier, and on a device that turns compression into cost savings. Laptop-CPU latencies are pending.
 
 ---
 
@@ -27,7 +29,17 @@ Calibrating FLAP on train-split questions instead of Wikipedia, with no retraini
 
 Small open language models (1–3 B parameters) can now run on edge-class hardware, but every query is still answered with the same fixed amount of computation. Structured pruning methods such as FLAP [3] and SliceGPT [4] reduce that computation without retraining, but they fix one compression ratio at deployment time. Queries, however, differ in difficulty: a heavily pruned model may answer an easy question correctly and fail a hard one.
 
-This thesis studies whether choosing the compression level *per query* pays off on edge hardware. We build a ladder of FLAP-pruned variants of one model (SmolLM2-1.7B [17]). We measure every variant on every query of a 19,242-question pool drawn from eight standard benchmarks, and ask how much accuracy-per-cost a router could gain over running one fixed variant.
+Choosing the compression level *per query* is attractive, but it rests on two assumptions that are usually taken for granted:
+- that a heavily compressed variant of the model is still **useful** on the queries routed to it;
+- that the hardware turns the smaller model into a real **cost** saving.
+
+This thesis tests both assumptions on edge hardware. We build a ladder of FLAP-pruned variants of one model (SmolLM2-1.7B [17]). We measure every variant on every query of a 19,242-question pool drawn from eight standard benchmarks, and ask under which conditions a router can gain accuracy per cost over running one fixed variant.
+
+**Core claim.** Per-query compression-level routing only pays off when two conditions hold:
+1. **The cheap tier still carries information.** For training-free FLAP on a 1.7 B model, this means milder ratios (10–20%) and in-domain calibration data.
+2. **The device turns fewer parameters into lower cost.** On a GPU at batch size 1, this holds for prefill and energy but not for decoding.
+
+We measure the routing headroom with an oracle corrected for constant-answer artefacts. Whether a realistic router captures it is the subject of the second half of the thesis.
 
 In the resource-management taxonomy of Walia et al. [1], the compression level is the resource being allocated, and the router makes a per-request scheduling/provisioning decision. Neither that survey nor the MCDS scheduler [2] treats LLM-inference workloads.
 
@@ -35,16 +47,21 @@ In the resource-management taxonomy of Walia et al. [1], the compression level i
 - **Complete and verified:** Phase 0 (infrastructure).
 - **Implemented, tested and run on a Colab T4:**
   - Phase 1: the FLAP port, the ratio sweep and the baselines.
-  - Phase 2 on the test split: the query pool, scoring pipeline and external labels, plus the outcome runs of four variants and the headroom analysis.
+  - Phase 2 on the test split: the query pool, scoring pipeline and external labels; the outcome runs of seven pruned variants (WikiText- and in-domain-calibrated); the headroom analysis.
 - **Deferred:** laptop-CPU latency measurements (Section 9.2) and the Phase 2 outcome runs on the train/validation splits.
 
 **Research questions**
-- **RQ1:** Does FLAP give a useful accuracy–cost ladder on a ~1.7 B edge model, and does the paper's ranking (FLAP > Wanda-SP > Magnitude-SP) hold at this scale?
-- **RQ2:** How much can a per-query choice of compression level gain over the best fixed level (oracle headroom)?
-- **RQ3:** How much of that headroom does a cheap router recover, and does it beat routing by task type alone?
-- **RQ4:** What are the end-to-end latency, energy and memory savings on a GPU and on a laptop CPU?
+- **RQ1:** Can a training-free pruning method give a *useful* ladder of compression levels for a ~1.7 B edge model, and what does it need (method, calibration data)?
+- **RQ2:** How much can a per-query choice of the compression level gain over the best fixed level, once artefacts such as constant-answer variants are removed (informative-oracle headroom)?
+- **RQ3:** How much of that headroom does a realistic router recover, and does it beat routing by task type alone?
+- **RQ4:** On which devices does compression turn into lower latency, energy and memory, and therefore when can routing or cascading save cost?
 
-This report answers RQ1 and gives a first answer to RQ2 on the GPU. RQ3 and RQ4 are planned (Section 11).
+This report:
+- answers RQ1;
+- answers RQ2 on the GPU;
+- gives a first answer to RQ4 on the GPU.
+
+RQ3 and the CPU part of RQ4 are planned (Section 11).
 
 ---
 
@@ -60,6 +77,9 @@ This report answers RQ1 and gives a first answer to RQ2 on the GPU. RQ3 and RQ4 
 - SliceGPT [4] rotates the weights and deletes rows and columns.
 - Wanda [5] uses weight × activation importance. Its structured variant Wanda-SP is evaluated in FLAP.
 - LLM-Pruner [6] needs LoRA fine-tuning to recover accuracy.
+- **The choice of calibration data matters:**
+  - Williams and Aletras [27] show that pruning is more sensitive to it than quantisation;
+  - Bandari et al. [28] find that the common default (C4) is not always the best choice for LLM pruning.
 
 **Input-adaptive and elastic compression.**
 - PuDDing [7] trains a router that selects one of several *depth*-pruned variants per prompt at a fixed sparsity.
@@ -76,13 +96,25 @@ This report answers RQ1 and gives a first answer to RQ2 on the GPU. RQ3 and RQ4 
 
 ## 3. Novelty and Positioning
 
-Per-prompt selection among pruned variants is **not** new: PuDDing [7] does it for depth pruning. The contribution claimed here is narrower:
+Two things here are **not** new:
+- per-prompt selection among pruned variants, which PuDDing [7] does for depth pruning;
+- the observation that calibration data affects pruning [27, 28].
 
-1. **A training-free ladder of nested width-pruned (FLAP) variants of one model.** Nesting follows from FLAP's global threshold (Proposition 1, Section 6). It lets one copy of the weights serve every variant.
-2. **Choosing *how much* to compress per query** (variable budget, cost-aware). This differs from choosing *which* structure to keep at a fixed budget (PuDDing, IFPruning) and from reacting to memory pressure (RAP).
-3. **An edge-hardware measurement of when per-query compression routing pays off:** oracle headroom, how much of it a router recovers, and end-to-end latency/energy on a Colab T4 and on a laptop CPU.
+The contributions of this thesis are narrower:
 
-Prior routing work routes between *separate* models. Pruned variants of one model are expected to fail on largely the same queries. So the headroom available to a router is an open empirical question (RQ2), not an assumption.
+1. **A usable training-free ladder for a small edge model.**
+   - FLAP on a 1.7 B model, calibrated on Wikipedia as in the original method, collapses to constant answers on several tasks.
+   - Calibrating it on in-domain questions (train split, no answers) largely removes this collapse at 10–20%.
+   - The variants are **nested** (Proposition 1, Section 6), so one copy of the weights can serve all of them.
+2. **An artefact-corrected measurement of routing headroom.**
+   - An *informative oracle* only admits variants that beat a constant answer.
+   - Together with comparisons of ladders at matched ratios, it separates real headroom from the constant-answer artefacts that make a naive oracle overstate it.
+3. **An edge cost characterisation of compression-level routing.**
+   - On a GPU at batch size 1, width pruning lowers prefill latency, energy and memory, but not decode latency.
+   - A query-level cascade saves cost only if the cheap tier serves more questions than its cost ratio; we derive and measure this.
+   - Choosing *how much* to compress per query (variable budget, cost-aware) differs from choosing *which* structure to keep at a fixed budget (PuDDing, IFPruning) and from reacting to memory pressure (RAP).
+
+Prior routing work routes between *separate* models. Pruned variants of one model tend to fail on the same queries, so the headroom available to a router is an empirical question (RQ2) rather than an assumption.
 
 ---
 
@@ -540,6 +572,18 @@ The comparison below is at matched ratios, on the same 3,849 test questions. W =
 
 ## 10. Conclusion
 
+### Answer to the core question
+
+Per-query compression-level routing on edge hardware pays off only under two conditions, and this report measures both.
+
+1. **The cheap tier must still carry information.**
+   - The original 20/35/50% ladder leaves only **+1.9 points** of informative headroom.
+   - Including a milder 10% variant raises the bound to **+6.9 points** (at 272 ms per question).
+   - In-domain calibration raises it to **+7.8 points**, at a lower cost (239 ms).
+2. **The device must turn compression into cost savings.** On the T4 at batch size 1, this holds for prefill, energy and memory, but not for decoding.
+
+Two questions remain for the second half of the thesis: whether a realistic router captures the bound, and whether the laptop CPU delivers the per-token savings the GPU does not.
+
 ### Key findings at a glance
 
 | Finding | Evidence | Outcome |
@@ -674,3 +718,5 @@ The diagnosis points to three concrete fixes. The first is already working:
 24. C. Clark et al. BoolQ: Exploring the Surprising Difficulty of Natural Yes/No Questions. *NAACL* 2019. arXiv:1905.10044
 25. K. Cobbe et al. Training Verifiers to Solve Math Word Problems. arXiv:2110.14168
 26. S. Merity et al. Pointer Sentinel Mixture Models (WikiText-2). arXiv:1609.07843
+27. M. Williams, N. Aletras. On the Impact of Calibration Data in Post-training Quantization and Pruning. *ACL* 2024. arXiv:2311.09755
+28. A. Bandari et al. Is C4 Dataset Optimal for Pruning? An Investigation of Calibration Data for LLM Pruning. *EMNLP* 2024. arXiv:2410.07461
