@@ -1,0 +1,188 @@
+{
+  "mc_max_answer_share": {
+    "arc_challenge": {
+      "flaptask_0.10": {
+        "max_share": 0.2723404255319149,
+        "answer": 0,
+        "accuracy": 0.4297872340425532
+      },
+      "flaptask_0.20": {
+        "max_share": 0.26382978723404255,
+        "answer": 0,
+        "accuracy": 0.39574468085106385
+      },
+      "flaptask_0.35": {
+        "max_share": 0.2680851063829787,
+        "answer": 3,
+        "accuracy": 0.3191489361702128
+      },
+      "v0": {
+        "max_share": 0.2680851063829787,
+        "answer": 3,
+        "accuracy": 0.5106382978723404
+      }
+    },
+    "arc_easy": {
+      "flaptask_0.10": {
+        "max_share": 0.30105263157894735,
+        "answer": 0,
+        "accuracy": 0.7452631578947368
+      },
+      "flaptask_0.20": {
+        "max_share": 0.30526315789473685,
+        "answer": 0,
+        "accuracy": 0.6968421052631579
+      },
+      "flaptask_0.35": {
+        "max_share": 0.32210526315789473,
+        "answer": 0,
+        "accuracy": 0.6063157894736843
+      },
+      "v0": {
+        "max_share": 0.2926315789473684,
+        "answer": 0,
+        "accuracy": 0.7810526315789473
+      }
+    },
+    "boolq": {
+      "flaptask_0.10": {
+        "max_share": 0.7431192660550459,
+        "answer": 1,
+        "accuracy": 0.6972477064220184
+      },
+      "flaptask_0.20": {
+        "max_share": 0.8333333333333334,
+        "answer": 1,
+        "accuracy": 0.6834862385321101
+      },
+      "flaptask_0.35": {
+        "max_share": 0.9678899082568807,
+        "answer": 1,
+        "accuracy": 0.6376146788990825
+      },
+      "v0": {
+        "max_share": 0.7079510703363915,
+        "answer": 1,
+        "accuracy": 0.7324159021406728
+      }
+    },
+    "hellaswag": {
+      "flaptask_0.10": {
+        "max_share": 0.2625,
+        "answer": 2,
+        "accuracy": 0.6875
+      },
+      "flaptask_0.20": {
+        "max_share": 0.26375,
+        "answer": 0,
+        "accuracy": 0.62875
+      },
+      "flaptask_0.35": {
+        "max_share": 0.26125,
+        "answer": 3,
+        "accuracy": 0.46
+      },
+      "v0": {
+        "max_share": 0.27,
+        "answer": 3,
+        "accuracy": 0.7225
+      }
+    },
+    "mmlu": {
+      "flaptask_0.10": {
+        "max_share": 0.32,
+        "answer": 0,
+        "accuracy": 0.43
+      },
+      "flaptask_0.20": {
+        "max_share": 0.42875,
+        "answer": 2,
+        "accuracy": 0.3925
+      },
+      "flaptask_0.35": {
+        "max_share": 0.805,
+        "answer": 1,
+        "accuracy": 0.25625
+      },
+      "v0": {
+        "max_share": 0.32125,
+        "answer": 0,
+        "accuracy": 0.46375
+      }
+    },
+    "piqa": {
+      "flaptask_0.10": {
+        "max_share": 0.5040871934604905,
+        "answer": 1,
+        "accuracy": 0.7929155313351499
+      },
+      "flaptask_0.20": {
+        "max_share": 0.5095367847411444,
+        "answer": 1,
+        "accuracy": 0.7874659400544959
+      },
+      "flaptask_0.35": {
+        "max_share": 0.5395095367847411,
+        "answer": 1,
+        "accuracy": 0.7247956403269755
+      },
+      "v0": {
+        "max_share": 0.5122615803814714,
+        "answer": 1,
+        "accuracy": 0.8119891008174387
+      }
+    },
+    "winogrande": {
+      "flaptask_0.10": {
+        "max_share": 0.515748031496063,
+        "answer": 1,
+        "accuracy": 0.610236220472441
+      },
+      "flaptask_0.20": {
+        "max_share": 0.531496062992126,
+        "answer": 0,
+        "accuracy": 0.594488188976378
+      },
+      "flaptask_0.35": {
+        "max_share": 0.5039370078740157,
+        "answer": 1,
+        "accuracy": 0.5275590551181102
+      },
+      "v0": {
+        "max_share": 0.5196850393700787,
+        "answer": 1,
+        "accuracy": 0.6614173228346457
+      }
+    }
+  },
+  "gsm8k_generation": {
+    "flaptask_0.10": {
+      "accuracy": 0.12878787878787878,
+      "mean_tokens": 122.20833333333333,
+      "median_tokens": 105.0,
+      "share_at_cap": 0.125,
+      "cap": 256
+    },
+    "flaptask_0.20": {
+      "accuracy": 0.01893939393939394,
+      "mean_tokens": 218.3598484848485,
+      "median_tokens": 256.0,
+      "share_at_cap": 0.7803030303030303,
+      "cap": 256
+    },
+    "flaptask_0.35": {
+      "accuracy": 0.015151515151515152,
+      "mean_tokens": 233.9810606060606,
+      "median_tokens": 256.0,
+      "share_at_cap": 0.8560606060606061,
+      "cap": 256
+    },
+    "v0": {
+      "accuracy": 0.3181818181818182,
+      "mean_tokens": 122.27651515151516,
+      "median_tokens": 109.0,
+      "share_at_cap": 0.06439393939393939,
+      "cap": 256
+    }
+  }
+}
