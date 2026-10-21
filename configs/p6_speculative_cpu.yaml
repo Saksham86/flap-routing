@@ -1,0 +1,21 @@
+# P6 token-level cascade on the laptop CPU: full fp32 SmolLM2-1.7B verifies drafts from compressed versions of itself.
+# Output must be identical to the full model (greedy); timing is paired per prompt (drift-robust).
+phase: p6
+run_name: speculative_cpu
+seed: 0
+device: cpu
+threads: null
+require_ac_power: true
+paths:
+  results_root: ${QACR_RESULTS_ROOT}
+base: HuggingFaceTB/SmolLM2-1.7B
+target_dtype: float32
+n_prompts: 8
+max_new_tokens: 64
+num_assistant_tokens: 5
+schedule: constant
+assistant_confidence_threshold: 0.0     # 0 = always draft num_assistant_tokens (the confidence stop is ablated later)
+drafts:
+  - {name: full_int8,       dtype: float32, int8: true}                                                         # quantization-only draft (reference)
+  - {name: flap_0.20_int8,  dtype: float32, int8: true, plan: results/p1/20261019-144738_flap_sweep/plans/flap_0.20.safetensors}
+  - {name: flap_0.50_int8,  dtype: float32, int8: true, plan: results/p1/20261019-144738_flap_sweep/plans/flap_0.50.safetensors}
