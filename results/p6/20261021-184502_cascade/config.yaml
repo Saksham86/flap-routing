@@ -1,0 +1,31 @@
+phase: p6
+run_name: cascade
+seed: 0
+paths:
+  results_root: null
+full: v0
+cheap:
+- flap_0.20
+- flap_0.35
+- flap_0.50
+max_loss:
+- 0.0
+- 0.005
+- 0.01
+variants:
+  v0:
+    outcomes: results/p2/20261021-105141_outcomes
+    profile_dir: results/p1/20261019-144738_flap_sweep
+    profile_name: none_0.00
+  flap_0.20:
+    outcomes: results/p2/20261021-111206_outcomes
+    profile_dir: results/p1/20261019-144738_flap_sweep
+    profile_name: flap_0.20
+  flap_0.35:
+    outcomes: results/p2/20261021-112239_outcomes
+    profile_dir: results/p1/20261019-144738_flap_sweep
+    profile_name: flap_0.35
+  flap_0.50:
+    outcomes: results/p2/20261021-110438_outcomes
+    profile_dir: results/p1/20261019-144738_flap_sweep
+    profile_name: flap_0.50

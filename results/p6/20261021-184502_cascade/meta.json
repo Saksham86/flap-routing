@@ -1,0 +1,17 @@
+{
+  "run_id": "20261021-184502_cascade",
+  "phase": "p6",
+  "seed": 0,
+  "started": "2026-10-21T18:45:02",
+  "argv": [
+    "scripts/p6_cascade.py",
+    "--config",
+    "configs/p6_cascade.yaml"
+  ],
+  "git": {
+    "commit": "8ba2d552a5edc39ed936cf58918a904151d9c3a1",
+    "dirty": false,
+    "dirty_files": []
+  },
+  "resumed": false
+}
