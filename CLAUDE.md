@@ -193,6 +193,8 @@ STATUS.md  requirements.txt  pyproject.toml
   - It shuffles answer options, so matching keys sort options.
   - Its GSM8K items are from the train split, so they never match our test-split pool.
 - **Truncation:** lm-eval left-truncates over-long contexts. Outcome runs flag `n_truncation_risk` per task.
+- **Local environment:** use the repo-local `.venv` (git-ignored). A venv under %TEMP% was partly deleted by Windows temp cleanup mid-run (2026-10-21).
+- **CPU timing:** only on mains power with the power state recorded per variant (`require_ac_power`); run each variant in a fresh process and repeat the first variant at the end as a drift check.
 - **Run provenance:** git state is read before the run dir is created, and `results/` is excluded from the dirty check.
 
 ## Phases

@@ -1,0 +1,21 @@
+phase: p1
+run_name: cpu_ac_none_0.00
+seed: 0
+device: cpu
+threads: null
+require_ac_power: true
+paths:
+  results_root: null
+base:
+  path: HuggingFaceTB/SmolLM2-1.7B
+  dtype: float32
+plans_dir: C:/All my stuff/Books/Thesis/flap-routing/results/p1/20261019-144738_flap_sweep/plans
+variants:
+- none_0.00
+profile:
+  prompt_lens:
+  - 128
+  - 512
+  gen_tokens: 32
+  warmup: 2
+  reps: 5
