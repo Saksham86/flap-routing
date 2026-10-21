@@ -43,5 +43,120 @@ Mag-SP 50\% & 50.0 & 0.906 & $1.3\times10^{10}$ & 59.1 & 29.6 & 1.469 \\
 \paragraph{Laptop CPU (edge device).} \pend{a first set of CPU measurements was discarded because the laptop was running on battery with the CPU throttled (about 55\% performance, about 1.97\,GHz); repetition spreads reached 2$\times$ and the variants were non-monotonic in size. Those runs are kept in the repository marked INVALID. The re-measurement on mains power, with the power state recorded per variant, is pending.}
 
 \subsection{Accuracy and oracle headroom (P2)}
-\pend{per-variant accuracy on all 19{,}242 queries and the headroom analysis of Eq.~\eqref{eq:headroom}; the outcome runs for the unpruned model and the FLAP variants are queued on the T4 after the sweep.}
+Table~\ref{tab:acc} gives the accuracy of each variant on the 3{,}849 test-split questions (primary metric per task, Sec.~\ref{sec:data}).
+
+\begin{table}[h]\centering\small
+\begin{tabular}{lrrrr}
+\toprule
+Task & unpruned & FLAP 20\% & FLAP 35\% & FLAP 50\% \\
+\midrule
+ARC-Challenge & 51.1 & 33.6 & 31.9 & 28.5 \\
+ARC-Easy & 78.1 & 65.1 & 53.7 & 32.4 \\
+BoolQ & 73.2 & 63.3 & 52.1 & 37.0 \\
+GSM8K & 31.8 & 3.0 & 2.3 & 1.1 \\
+HellaSwag & 72.2 & 56.5 & 39.6 & 26.1 \\
+MMLU & 46.4 & 24.8 & 24.1 & 24.1 \\
+PIQA & 81.2 & 74.4 & 65.9 & 60.8 \\
+WinoGrande & 66.1 & 57.5 & 50.4 & 50.8 \\
+\midrule
+Macro average & 62.5 & 47.3 & 40.0 & 32.6 \\
+\bottomrule
+\end{tabular}
+\caption{Accuracy (\%) on the test split.}\label{tab:acc}
+\end{table}
+
+\paragraph{Cost per query.} Table~\ref{tab:cost} gives the mean modelled latency per test question (Sec.~\ref{sec:math}: measured prefill latency at the question's prompt length, plus measured decode latency times the generated length for GSM8K).
+
+\begin{table}[h]\centering\small
+\begin{tabular}{lr}
+\toprule
+Variant & T4 GPU (ms) \\
+\midrule
+unpruned & 291.6 \\
+FLAP 20\% & 506.9 \\
+FLAP 35\% & 573.2 \\
+FLAP 50\% & 577.0 \\
+\bottomrule
+\end{tabular}
+\caption{Mean modelled latency per test question.}\label{tab:cost}
+\end{table}
+
+\paragraph{Collapse of the pruned variants.} Accuracy alone hides how the pruned variants fail. Table~\ref{tab:collapse} gives, for every multiple-choice task, the share of questions on which each variant gives its single most frequent answer; 100\% means the variant answers every question identically (e.g.\ always ``A'' or always ``no''). The ``constant'' column is the accuracy of always giving the most common gold answer. On GSM8K (Table~\ref{tab:gsm8k}) the pruned variants mostly fail to finish an answer and generate until the 256-token limit.
+
+\begin{table}[h]\centering\small
+\begin{tabular}{lrrrrr}
+\toprule
+Task & Constant & unpruned & FLAP 20\% & FLAP 35\% & FLAP 50\% \\
+\midrule
+ARC-Easy & 29.3 & 29 & 31 & 34 & 33 \\
+ARC-Challenge & 28.9 & 27 & 27 & 29 & 32 \\
+HellaSwag & 28.0 & 27 & 26 & 27 & 28 \\
+WinoGrande & 51.2 & 52 & 52 & 53 & 56 \\
+PIQA & 50.1 & 51 & 55 & 55 & 52 \\
+BoolQ & 63.0 & 71 & 99 & 55 & 100 \\
+MMLU & 26.6 & 32 & 87 & 100 & 100 \\
+\bottomrule
+\end{tabular}
+\caption{Share (\%) of test questions receiving each variant's most frequent answer, and the accuracy of the best constant answer.}\label{tab:collapse}
+\end{table}
+
+\begin{table}[h]\centering\small
+\begin{tabular}{lrrrr}
+\toprule
+Variant & Accuracy (\%) & Mean tokens & Median tokens & At limit (\%) \\
+\midrule
+unpruned & 31.8 & 122 & 109 & 6.4 \\
+FLAP 20\% & 3.0 & 222 & 256 & 80.3 \\
+FLAP 35\% & 2.3 & 256 & 256 & 100.0 \\
+FLAP 50\% & 1.1 & 256 & 256 & 100.0 \\
+\bottomrule
+\end{tabular}
+\caption{GSM8K generation on the test split.}\label{tab:gsm8k}
+\end{table}
+
+\paragraph{Oracle headroom.} The plain oracle (Eq.~\eqref{eq:headroom}) counts a question as solved if any variant answers it correctly. When some variants answer every question identically, combining them ``solves'' questions that no router could identify (two variants that always answer ``yes'' and always answer ``no'' together cover all of BoolQ). We therefore also report an \emph{informative oracle}: on each task a variant may be chosen only if its accuracy beats the best constant answer (one-sided binomial test, $p<0.01$). Table~\ref{tab:headroom} gives both, with the accuracy expected if the variants' errors were independent, $1-\prod_v(1-A_v)$. Entries are accuracy (\%) @ mean cost per question (ms).
+
+\begin{table}[h]\centering\small
+\begin{tabular}{lllll}
+\toprule
+Cost model & Best fixed & Oracle & Informative oracle & Independent \\
+\midrule
+T4 GPU & unpruned: 64.1 @ 291.6 & 75.8 @ 290.1 & 66.1 @ 291.4 & 92.5 \\
+\bottomrule
+\end{tabular}
+\caption{Best fixed variant, oracle and informative oracle on the test split.}\label{tab:headroom}
+\end{table}
+
+\begin{table}[h]\centering\small
+\begin{tabularx}{\linewidth}{lrrrrrX}
+\toprule
+Task & $n$ & Constant & Best fixed & Oracle & Inf.\ oracle & Variants above the constant answer \\
+\midrule
+ARC-Easy & 475 & 29.3 & 78.1 & 84.0 & 82.7 & unpruned, FLAP 20\%, FLAP 35\% \\
+ARC-Challenge & 235 & 28.9 & 51.1 & 61.7 & 51.1 & unpruned \\
+HellaSwag & 800 & 28.0 & 72.2 & 77.0 & 75.0 & unpruned, FLAP 20\%, FLAP 35\% \\
+WinoGrande & 254 & 51.2 & 66.1 & 87.4 & 66.1 & unpruned \\
+PIQA & 367 & 50.1 & 81.2 & 86.4 & 86.4 & unpruned, FLAP 20\%, FLAP 35\%, FLAP 50\% \\
+BoolQ & 654 & 63.0 & 73.2 & 100.0 & 73.2 & unpruned \\
+MMLU & 800 & 26.6 & 46.4 & 58.8 & 46.4 & unpruned \\
+GSM8K & 264 & -- & 31.8 & 36.0 & 36.0 & unpruned, FLAP 20\%, FLAP 35\%, FLAP 50\% \\
+\bottomrule
+\end{tabularx}
+\caption{Per-task accuracy (\%) on the test split.}\label{tab:pertask}
+\end{table}
+
+\paragraph{Agreement with the unpruned model.} Table~\ref{tab:pair} shows, for each pruned variant, how often it and the unpruned model are both right, only one of them is right, or both are wrong.
+
+\begin{table}[h]\centering\small
+\begin{tabular}{lrrrr}
+\toprule
+Variant & Both right & Only pruned right & Only unpruned right & Both wrong \\
+\midrule
+FLAP 20\% & 43.2 & 5.6 & 20.9 & 30.3 \\
+FLAP 35\% & 33.3 & 7.1 & 30.8 & 28.7 \\
+FLAP 50\% & 23.4 & 8.3 & 40.7 & 27.6 \\
+\bottomrule
+\end{tabular}
+\caption{Outcome overlap with the unpruned model (\% of test questions).}\label{tab:pair}
+\end{table}
 

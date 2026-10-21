@@ -267,16 +267,13 @@ def p2_section(src) -> tuple[str, dict]:
     if not heads:
         return s, facts
 
-    # oracle / hull per cost model
+    # oracle per cost model: best fixed / raw oracle / informative oracle
     rows = []
     for label_, h in heads.items():
-        st = h["static"]
-        best = max(st.values(), key=lambda x: x["accuracy"])
-        rows.append(f"{tex_escape(label_)} & {h['oracle']['accuracy'] * 100:.1f} & {h['oracle']['cost_ms']:.1f} & "
-                    f"{h['hull_accuracy_at_oracle_cost'] * 100:.1f} & "
-                    + (f"{h['headroom_points'] * 100:.1f}" if h['headroom_points'] is not None else "--")
-                    + f" & {h['independent_oracle_accuracy'] * 100:.1f} & {best['accuracy'] * 100:.1f} & "
-                    f"{h['oracle']['unsolvable_share'] * 100:.1f} \\\\")
+        bf, orc, io = h["best_fixed"], h["oracle"], h["informative_oracle"]
+        rows.append(f"{tex_escape(label_)} & {vname(bf['variant'])}: {bf['accuracy'] * 100:.1f} @ {bf['cost_ms']:.1f} & "
+                    f"{orc['accuracy'] * 100:.1f} @ {orc['cost_ms']:.1f} & {io['accuracy'] * 100:.1f} @ {io['cost_ms']:.1f} & "
+                    f"{h['independent_oracle_accuracy'] * 100:.1f} \\\\")
     cost_rows = []
     for v in variants:
         cost_rows.append(f"{vname(v)} & " + " & ".join(f"{heads[k]['static'][v]['cost_ms']:.1f}" for k in heads) + " \\\\")
@@ -287,32 +284,59 @@ def p2_section(src) -> tuple[str, dict]:
           "Variant & " + " & ".join(f"{tex_escape(k)} (ms)" for k in heads) + " \\\\\n\\midrule\n"
           + "\n".join(cost_rows) + "\n\\bottomrule\n\\end{tabular}\n"
           "\\caption{Mean modelled latency per test question.}\\label{tab:cost}\n\\end{table}\n\n")
-    s += ("\\paragraph{Oracle headroom.} Table~\\ref{tab:headroom} compares the per-query oracle with the random-mixture "
-          "hull at the oracle's cost (Eq.~\\eqref{eq:headroom}). ``Independent'' is the oracle accuracy expected if the "
-          "variants' errors were statistically independent, $1-\\prod_v(1-A_v)$; an observed oracle well below it means "
-          "the variants tend to fail on the same questions.\n\n"
-          "\\begin{table}[h]\\centering\\small\n\\begin{tabular}{lrrrrrrr}\n\\toprule\n"
-          "Cost model & Oracle acc. & Oracle cost (ms) & Hull acc. & Headroom (pts) & Independent & Best fixed & "
-          "None correct (\\%) \\\\\n\\midrule\n" + "\n".join(rows) + "\n\\bottomrule\n\\end{tabular}\n"
-          "\\caption{Per-query oracle vs.\\ random-mixture hull on the test split (accuracies in \\%).}"
-          "\\label{tab:headroom}\n\\end{table}\n\n")
-
-    # per-task view (cost model independent for accuracies; headroom uses the first cost model)
     first = next(iter(heads.values()))
-    pt = first["per_task_headroom"]
+    io = first["informative_oracle"]
+    beh = json.loads((d / "behaviour.json").read_text(encoding="utf-8")) if (d / "behaviour.json").exists() else None
+
+    # behaviour: collapse evidence
+    if beh:
+        mc = beh["mc_max_answer_share"]
+        brows = []
+        for t in sorted(mc, key=lambda t: list(TASK_NAMES).index(t) if t in TASK_NAMES else 99):
+            brows.append(f"{TASK_NAMES.get(t, t)} & {io['per_task'][t]['constant_baseline'] * 100:.1f} & "
+                         + " & ".join(f"{mc[t][v]['max_share'] * 100:.0f}" for v in variants) + " \\\\")
+        g = beh["gsm8k_generation"]
+        grows = [f"{vname(v)} & {g[v]['accuracy'] * 100:.1f} & {g[v]['mean_tokens']:.0f} & {g[v]['median_tokens']:.0f} & "
+                 f"{g[v]['share_at_cap'] * 100:.1f} \\\\" for v in variants]
+        s += ("\\paragraph{Collapse of the pruned variants.} Accuracy alone hides how the pruned variants fail. "
+              "Table~\\ref{tab:collapse} gives, for every multiple-choice task, the share of questions on which each "
+              "variant gives its single most frequent answer; 100\\% means the variant answers every question "
+              "identically (e.g.\\ always ``A'' or always ``no''). The ``constant'' column is the accuracy of always "
+              "giving the most common gold answer. On GSM8K (Table~\\ref{tab:gsm8k}) the pruned variants mostly fail "
+              f"to finish an answer and generate until the {g[variants[0]]['cap']}-token limit.\n\n"
+              "\\begin{table}[h]\\centering\\small\n\\begin{tabular}{lr" + "r" * len(variants) + "}\n\\toprule\n"
+              "Task & Constant & " + " & ".join(vname(v) for v in variants) + " \\\\\n\\midrule\n" + "\n".join(brows)
+              + "\n\\bottomrule\n\\end{tabular}\n\\caption{Share (\\%) of test questions receiving each variant's most "
+              "frequent answer, and the accuracy of the best constant answer.}\\label{tab:collapse}\n\\end{table}\n\n"
+              "\\begin{table}[h]\\centering\\small\n\\begin{tabular}{lrrrr}\n\\toprule\n"
+              "Variant & Accuracy (\\%) & Mean tokens & Median tokens & At limit (\\%) \\\\\n\\midrule\n"
+              + "\n".join(grows) + "\n\\bottomrule\n\\end{tabular}\n\\caption{GSM8K generation on the test split.}"
+              "\\label{tab:gsm8k}\n\\end{table}\n\n")
+
+    s += ("\\paragraph{Oracle headroom.} The plain oracle (Eq.~\\eqref{eq:headroom}) counts a question as solved if "
+          "any variant answers it correctly. When some variants answer every question identically, combining them "
+          "``solves'' questions that no router could identify (two variants that always answer ``yes'' and always "
+          "answer ``no'' together cover all of BoolQ). We therefore also report an \\emph{informative oracle}: on each "
+          "task a variant may be chosen only if its accuracy beats the best constant answer (one-sided binomial test, "
+          f"$p<{io['alpha']}$). Table~\\ref{{tab:headroom}} gives both, with the accuracy expected if the variants' errors "
+          "were independent, $1-\\prod_v(1-A_v)$. Entries are accuracy (\\%) @ mean cost per question (ms).\n\n"
+          "\\begin{table}[h]\\centering\\small\n\\begin{tabular}{lllll}\n\\toprule\n"
+          "Cost model & Best fixed & Oracle & Informative oracle & Independent \\\\\n\\midrule\n" + "\n".join(rows)
+          + "\n\\bottomrule\n\\end{tabular}\n\\caption{Best fixed variant, oracle and informative oracle on the test "
+          "split.}\\label{tab:headroom}\n\\end{table}\n\n")
+
     trows = []
-    for t in sorted(pt, key=lambda t: list(TASK_NAMES).index(t) if t in TASK_NAMES else 99):
-        x = pt[t]
-        trows.append(f"{TASK_NAMES.get(t, t)} & {x['n']} & {x['best_static_accuracy'] * 100:.1f} & "
-                     f"{x['oracle_accuracy'] * 100:.1f} & {x['independent_oracle_accuracy'] * 100:.1f} & "
-                     + (f"{x['chance_accuracy'] * 100:.1f}" if x.get("chance_accuracy") else "--") + " \\\\")
-    s += ("\\paragraph{Per task.} Table~\\ref{tab:pertask} separates the tasks. ``Chance'' is the accuracy of random "
-          "guessing among the answer options; on tasks where the variants are close to chance, part of the oracle's "
-          "gain comes from lucky guesses that no router can predict.\n\n"
-          "\\begin{table}[h]\\centering\\small\n\\begin{tabular}{lrrrrr}\n\\toprule\n"
-          "Task & $n$ & Best fixed & Oracle & Independent & Chance \\\\\n\\midrule\n" + "\n".join(trows)
-          + "\n\\bottomrule\n\\end{tabular}\n\\caption{Per-task accuracy (\\%) of the best fixed variant, the oracle, "
-          "the independence reference and chance, on the test split.}\\label{tab:pertask}\n\\end{table}\n\n")
+    for t in sorted(io["per_task"], key=lambda t: list(TASK_NAMES).index(t) if t in TASK_NAMES else 99):
+        x, ph = io["per_task"][t], first["per_task_headroom"][t]
+        inf = [vname(v) for v, z in x["variants"].items() if z["informative"]]
+        trows.append(f"{TASK_NAMES.get(t, t)} & {ph['n']} & "
+                     + (f"{x['constant_baseline'] * 100:.1f}" if x["constant_baseline"] > 0 else "--")
+                     + f" & {ph['best_static_accuracy'] * 100:.1f} & {ph['oracle_accuracy'] * 100:.1f} & "
+                     f"{x['oracle_accuracy'] * 100:.1f} & {', '.join(inf)} \\\\")
+    s += ("\\begin{table}[h]\\centering\\small\n\\begin{tabularx}{\\linewidth}{lrrrrrX}\n\\toprule\n"
+          "Task & $n$ & Constant & Best fixed & Oracle & Inf.\\ oracle & Variants above the constant answer \\\\\n"
+          "\\midrule\n" + "\n".join(trows) + "\n\\bottomrule\n\\end{tabularx}\n\\caption{Per-task accuracy (\\%) on "
+          "the test split.}\\label{tab:pertask}\n\\end{table}\n\n")
 
     pair = first["pairwise_vs_reference"]
     prow = [f"{vname(v)} & {p['both_correct'] * 100:.1f} & {p['only_pruned_correct'] * 100:.1f} & "
@@ -343,6 +367,19 @@ def _p1_numbers(src) -> dict | None:
     }
 
 
+def _p2_numbers(src) -> dict | None:
+    if not src.get("p2_analysis_dir"):
+        return None
+    d = REPO / src["p2_analysis_dir"]
+    acc = {r["task"]: r for r in read_csv(d / "accuracy_table.csv")}["macro_avg"]
+    h = json.loads(sorted(d.glob("headroom_*.json"))[0].read_text(encoding="utf-8"))
+    pruned = sorted((v for v in acc if v not in ("task", "v0")), key=lambda v: float(v.split("_")[1]))
+    return {"n": h["n_queries"], "acc": {v: float(acc[v]) * 100 for v in acc if v != "task"}, "pruned": pruned,
+            "oracle": h["oracle"]["accuracy"] * 100, "best": h["best_fixed"]["accuracy"] * 100,
+            "inf": h["informative_oracle"]["accuracy"] * 100,
+            "inf_v0_share": h["informative_oracle"]["pick_share"].get("v0", 0) * 100}
+
+
 def abstract(src) -> str:
     m = load_json(src["pool_manifest"])
     n = _p1_numbers(src)
@@ -357,8 +394,17 @@ def abstract(src) -> str:
               "fails), reproducing the FLAP paper's method ranking at this scale. Pruning 50\\% cuts 1024-token prefill "
               f"latency by {n['pre1024_cut'] * 100:.0f}\\% and energy per generated token by {n['energy_cut'] * 100:.0f}\\%, "
               f"but batch-1 decode latency stays at {n['dec_lo']:.1f}--{n['dec_hi']:.1f}\\,ms per token for every ratio. ")
-    if src.get("p2_analysis_dir"):
-        s += "We report per-variant accuracy and the oracle headroom available to a per-query router. "
+    p2 = _p2_numbers(src)
+    if p2:
+        s += (f"On {fmt_int(p2['n'])} test questions, macro accuracy falls from {p2['acc']['v0']:.1f}\\% (unpruned) to "
+              + ", ".join(f"{p2['acc'][v]:.1f}\\% ({label(v)})" for v in p2["pruned"]) + "; several pruned variants "
+              "collapse to a constant answer on MMLU and BoolQ and fail to finish GSM8K answers. A per-query oracle "
+              f"over the variants reaches {p2['oracle']:.1f}\\% versus {p2['best']:.1f}\\% for the best fixed variant, but "
+              f"once variants that do not beat a constant answer are excluded the gain shrinks to "
+              f"{p2['inf'] - p2['best']:.1f} points ({p2['inf']:.1f}\\%), so on this GPU the headroom for per-query "
+              "compression routing is small. ")
+        if not src.get("cpu_profile_dirs"):
+            s += "Laptop-CPU latencies are pending. "
     else:
         s += ("Per-variant accuracy on the query pool, the oracle headroom available to a router, and laptop-CPU "
               "latencies are being measured and are reported as pending. ")
@@ -376,9 +422,21 @@ def conclusion(src) -> str:
               "keeps its advantage over Wanda-SP and Magnitude-SP. They also show that on a T4 at batch size 1 width pruning "
               "reduces prefill latency, energy and memory but not decode latency, so the cost model used for routing must "
               "be measured per device rather than assumed proportional to parameter count. ")
-    s += ("Whether routing pays off (RQ2) depends on the oracle headroom, which the outcome runs now in progress will "
-          "measure; the analysis separates genuine complementarity between variants from lucky guesses by comparing "
-          "with independence and chance references. The remaining phases are planned as follows.\n")
+    p2 = _p2_numbers(src)
+    if p2:
+        s += ("For RQ2, the outcome matrix shows that the plain oracle overstates what routing can gain: "
+              f"{p2['oracle']:.1f}\\% against {p2['best']:.1f}\\% for the best fixed variant, but much of that gain comes "
+              "from pruned variants that answer every question identically. Restricted to variants that beat a constant "
+              f"answer, the oracle reaches {p2['inf']:.1f}\\% and still sends {p2['inf_v0_share']:.1f}\\% of questions to "
+              "the unpruned model. On the T4, where all variants cost about the same per multiple-choice question and "
+              "the pruned variants generate longer GSM8K answers, per-query compression routing therefore has little to "
+              "gain. The planned next steps are to measure whether the laptop CPU, where pruning does shorten each step, "
+              "changes this, and to test less aggressive ratios (10--20\\%) where the pruned variants still beat a "
+              "constant answer on more tasks.\n")
+    else:
+        s += ("Whether routing pays off (RQ2) depends on the oracle headroom, which the outcome runs now in progress "
+              "will measure; the analysis separates genuine complementarity between variants from lucky guesses by "
+              "comparing with independence and chance references. The remaining phases are planned as follows.\n")
     return s
 
 

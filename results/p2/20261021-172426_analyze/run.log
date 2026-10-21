@@ -1,0 +1,15 @@
+2026-10-21 17:25:52 | INFO    | p2.analyze | outcomes: 15396 rows, 3849 queries, variants ['v0', 'flap_0.20', 'flap_0.35', 'flap_0.50'], splits ['test']
+2026-10-21 17:25:52 | INFO    | p2.analyze | accuracy (split=['test']):
+variant            v0  flap_0.20  flap_0.35  flap_0.50
+task                                                  
+arc_challenge  0.5106     0.3362     0.3191     0.2851
+arc_easy       0.7811     0.6505     0.5368     0.3242
+boolq          0.7324     0.6330     0.5214     0.3700
+gsm8k          0.3182     0.0303     0.0227     0.0114
+hellaswag      0.7225     0.5650     0.3962     0.2612
+mmlu           0.4638     0.2475     0.2412     0.2412
+piqa           0.8120     0.7439     0.6594     0.6076
+winogrande     0.6614     0.5748     0.5039     0.5079
+macro_avg      0.6252     0.4726     0.4001     0.3261
+2026-10-21 17:25:52 | INFO    | p2.analyze | [T4 GPU] static={'v0': (0.6415, 291.6), 'flap_0.20': (0.4882, 506.9), 'flap_0.35': (0.4045, 573.2), 'flap_0.50': (0.317, 577.0)}
+2026-10-21 17:25:52 | INFO    | p2.analyze | [T4 GPU] oracle acc=0.7581 cost=290.1ms | hull@oracle-cost=nan | headroom=None | unsolvable=0.242

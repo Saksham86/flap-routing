@@ -1,0 +1,20 @@
+phase: p2
+run_name: analyze
+seed: 0
+paths:
+  results_root: null
+splits:
+- test
+outcomes:
+  v0: results/p2/20261021-105141_outcomes
+  flap_0.20: results/p2/20261021-111206_outcomes
+  flap_0.35: results/p2/20261021-112239_outcomes
+  flap_0.50: results/p2/20261021-110438_outcomes
+variant_profile_names:
+  v0: none_0.00
+  flap_0.20: flap_0.20
+  flap_0.35: flap_0.35
+  flap_0.50: flap_0.50
+profiles:
+  T4 GPU:
+    dir: results/p1/20261019-144738_flap_sweep

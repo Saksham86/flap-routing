@@ -73,6 +73,20 @@ def main(argv: list[str] | None = None) -> int:
     acc.to_csv(run.path("accuracy_table.csv"))
     log.info("accuracy (split=%s):\n%s", splits, acc.round(4).to_string())
 
+    # Behaviour evidence: answer-distribution collapse (MC) and generation length (GSM8K)
+    behaviour = {"mc_max_answer_share": {}, "gsm8k_generation": {}}
+    for (t, v), g in out[out["task"] != "gsm8k"].groupby(["task", "variant"]):
+        share = g["pred"].astype("Int64").value_counts(normalize=True)
+        behaviour["mc_max_answer_share"].setdefault(t, {})[v] = {
+            "max_share": float(share.max()), "answer": int(share.idxmax()), "accuracy": float(g["correct"].mean())}
+    cap = int(cfg.get("gsm8k_max_gen_toks", 256))
+    for v, g in out[out["task"] == "gsm8k"].groupby("variant"):
+        behaviour["gsm8k_generation"][v] = {
+            "accuracy": float(g["correct"].mean()), "mean_tokens": float(g["n_gen_tokens"].mean()),
+            "median_tokens": float(g["n_gen_tokens"].median()),
+            "share_at_cap": float((g["n_gen_tokens"] >= cap - 1).mean()), "cap": cap}
+    run.write_json("behaviour.json", behaviour)
+
     names = cfg["variant_profile_names"]
     for label, spec in cfg["profiles"].items():
         prof = load_profiles(spec, names)

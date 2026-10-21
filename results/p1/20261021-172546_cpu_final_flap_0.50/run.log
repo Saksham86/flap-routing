@@ -1,0 +1,1 @@
+2026-10-21 17:26:15 | INFO    | p1.profile | hardware: {'device': 'cpu', 'torch_threads': 12, 'processor': 'Intel64 Family 6 Model 154 Stepping 3, GenuineIntel', 'platform': 'Windows-11-10.0.26200-SP0', 'dtype': 'torch.float32'}

@@ -1,0 +1,47 @@
+{
+  "none_0.00": {
+    "device": "cpu",
+    "prompt_lens": [
+      128,
+      512
+    ],
+    "gen_tokens": 32,
+    "warmup": 2,
+    "reps": 5,
+    "prefill": {
+      "128": {
+        "median_ms": 5333.3463000599295,
+        "min_ms": 4557.654200005345,
+        "max_ms": 5547.413000022061
+      },
+      "512": {
+        "median_ms": 17296.299399924465,
+        "min_ms": 16704.678400070406,
+        "max_ms": 18264.231399982236
+      }
+    },
+    "generate": {
+      "prompt_len": 128,
+      "median_ms": 19063.877600012347,
+      "min_ms": 18550.61969999224,
+      "max_ms": 20990.864799940027,
+      "decode_ms_per_tok": 442.9203645145941,
+      "tokens_per_s": 1.678567218663808
+    },
+    "energy": null,
+    "weight_bytes": 6845505536,
+    "n_params": 1711376384,
+    "power_before": {
+      "battery_status": 2,
+      "on_ac_power": true,
+      "cpu_percent_performance": 35.0,
+      "cpu_frequency_mhz": 2093.0
+    },
+    "power_after": {
+      "battery_status": 2,
+      "on_ac_power": true,
+      "cpu_percent_performance": 45.0,
+      "cpu_frequency_mhz": 1972.0
+    }
+  }
+}
