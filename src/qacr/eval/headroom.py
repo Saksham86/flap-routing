@@ -131,6 +131,8 @@ def analyze(outcomes: pd.DataFrame, cost_col: str = "cost_ms", order: list[str] 
             "chance_accuracy": (1.0 / k) if k else None,
         }
 
+    informative = informative_oracle(outcomes, Y, C, task, variants)  # None if no gold labels
+
     ref = variants[0]
     pair = {}
     for v in variants[1:]:
@@ -151,4 +153,53 @@ def analyze(outcomes: pd.DataFrame, cost_col: str = "cost_ms", order: list[str] 
         "pairwise_vs_reference": pair,
         "per_task_headroom": per_task_headroom,
         "independent_oracle_accuracy": float(1 - np.prod([1 - s["accuracy"] for s in static.values()])),
+        "best_fixed": max(({"variant": v, **s} for v, s in static.items()), key=lambda x: x["accuracy"]),
+        "oracle_minus_best_fixed_points": oracle_acc - max(s["accuracy"] for s in static.values()),
+        "informative_oracle": informative,
     }
+
+
+def informative_oracle(outcomes: pd.DataFrame, Y: pd.DataFrame, C: pd.DataFrame, task: pd.Series,
+                       variants: list[str], alpha: float = 0.01) -> dict:
+    """Oracle restricted, per task, to variants that beat the task's best CONSTANT-ANSWER baseline
+    (one-sided binomial test, p < alpha). A variant that always answers "A" or "no" scores the share of
+    questions with that gold answer; combining two such constant variants lets the plain oracle "cover"
+    questions that no router could identify. For generation tasks (no answer options) the constant baseline
+    is 0 and a variant is informative if it answers any question correctly."""
+    from scipy.stats import binomtest
+
+    if "gold" not in outcomes.columns:
+        return None
+    gold = outcomes.drop_duplicates("query_id").set_index("query_id")["gold"].reindex(Y.index)
+    nch = (outcomes.drop_duplicates("query_id").set_index("query_id")["n_choices"].reindex(Y.index)
+           if "n_choices" in outcomes.columns else pd.Series(0, index=Y.index))
+    Yn, Cn = Y.to_numpy(), C.to_numpy()
+    allowed = np.zeros_like(Yn, dtype=bool)
+    per_task = {}
+    for t in sorted(task.unique()):
+        m = (task == t).to_numpy()
+        n = int(m.sum())
+        is_mc = bool((nch[m] > 0).all())
+        base = float(gold[m].value_counts(normalize=True).max()) if is_mc else 0.0
+        info = {}
+        for i, v in enumerate(variants):
+            k = int(Yn[m, i].sum())
+            if is_mc:
+                p = float(binomtest(k, n, base, alternative="greater").pvalue)
+                ok = p < alpha
+            else:
+                p, ok = None, k > 0
+            info[v] = {"accuracy": k / n, "p_value": p, "informative": bool(ok)}
+            allowed[m, i] = ok
+        sub = Yn[m][:, allowed[m][0]] if allowed[m][0].any() else np.zeros((n, 0))
+        per_task[t] = {"constant_baseline": base, "variants": info,
+                       "oracle_accuracy": float(sub.max(axis=1).mean()) if sub.shape[1] else 0.0}
+    Ya = np.where(allowed, Yn, 0)
+    any_c = Ya.max(axis=1) == 1
+    cost_correct = np.where((Ya == 1), Cn, np.inf)
+    cost_allowed = np.where(allowed, Cn, np.inf)
+    pick = np.where(any_c, np.argmin(cost_correct, axis=1), np.argmin(cost_allowed, axis=1))
+    return {"alpha": alpha, "accuracy": float(any_c.mean()),
+            "cost_ms": float(Cn[np.arange(len(pick)), pick].mean()),
+            "pick_share": {v: float((pick == i).mean()) for i, v in enumerate(variants)},
+            "per_task": per_task}

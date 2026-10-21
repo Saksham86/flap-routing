@@ -65,3 +65,22 @@ def test_per_task_headroom_and_references():
     assert t["independent_oracle_accuracy"] == pytest.approx(1 - 0.5 * 0.5)
     assert t["chance_accuracy"] == 0.25
     assert r["independent_oracle_accuracy"] == pytest.approx(0.75)
+
+
+def test_informative_oracle_excludes_constant_answer_variants():
+    # 40 binary questions, gold alternates 0/1. "yes_bot" always predicts 1, "no_bot" always 0:
+    # together they cover every question, but neither beats the constant baseline (50%).
+    rows = []
+    for i in range(40):
+        g = i % 2
+        good = 1 if i % 10 != 0 else 0                  # 90% accurate, clearly above 50%
+        for v, correct in (("v0", good), ("yes_bot", int(g == 1)), ("no_bot", int(g == 0))):
+            rows.append({"query_id": f"q{i:02d}", "variant": v, "task": "t", "correct": correct,
+                         "cost_ms": {"v0": 10.0, "yes_bot": 1.0, "no_bot": 1.0}[v], "gold": str(g), "n_choices": 2})
+    r = analyze(pd.DataFrame(rows), order=["v0", "yes_bot", "no_bot"])
+    assert r["oracle"]["accuracy"] == 1.0                 # the artifact
+    inf = r["informative_oracle"]
+    assert inf["per_task"]["t"]["variants"]["yes_bot"]["informative"] is False
+    assert inf["per_task"]["t"]["variants"]["no_bot"]["informative"] is False
+    assert inf["per_task"]["t"]["variants"]["v0"]["informative"] is True
+    assert inf["accuracy"] == pytest.approx(0.9)          # only the real model counts
