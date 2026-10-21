@@ -1,0 +1,16 @@
+# P1 speed-up on the T4: eager vs static cache + CUDA graphs, per variant (+ 64-aligned FLAP plans).
+phase: p1
+run_name: fast_gpu
+seed: 0
+paths:
+  results_root: ${QACR_RESULTS_ROOT}
+base:
+  path: HuggingFaceTB/SmolLM2-1.7B
+plans_dir: ${QACR_PLANS_DIR}
+scores_dir: ${QACR_RESULTS_ROOT}/p1/20261019-144738_flap_sweep   # FLAP scores for the aligned plans
+variants: [none_0.00, flap_0.20, flap_0.35, flap_0.50]
+align: 64
+prompt_len: 128
+gen_tokens: 128
+warmup: 3
+reps: 10

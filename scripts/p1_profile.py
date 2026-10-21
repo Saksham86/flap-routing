@@ -79,6 +79,21 @@ def main(argv: list[str] | None = None) -> int:
         model = AutoModelForCausalLM.from_pretrained(cfg["base"]["path"], dtype=dtype).to(device).eval()
         if name != "none_0.00":
             apply_plan(model, PrunePlan.load(plans_dir / f"{name}.safetensors"), physical=True)
+        quant = get_dotted(cfg, "quantize", "none")
+        if quant == "int8":
+            from qacr.runtime.fast import quantize_int8_cpu
+            model = quantize_int8_cpu(model)
+        elif quant != "none":
+            raise ValueError(f"unknown quantize option {quant}")
+        ppl = None
+        n_win = get_dotted(cfg, "ppl_windows")
+        if n_win:
+            from transformers import AutoTokenizer
+
+            from qacr.pruning.flap import eval_ppl, wikitext2
+            tok = AutoTokenizer.from_pretrained(cfg["base"]["path"])
+            _, testenc = wikitext2(tok, 1, 0, 128)
+            ppl = eval_ppl(model, testenc, seqlen=128, bs=8, device=device, max_windows=int(n_win))
         before = power_state() if device == "cpu" else None
         if get_dotted(cfg, "require_ac_power", False) and before and before.get("on_ac_power") is False:
             log.error("on battery power: CPU timings would not be comparable; plug in the charger")
@@ -88,9 +103,14 @@ def main(argv: list[str] | None = None) -> int:
                           gen_tokens=prof["gen_tokens"], warmup=prof["warmup"], reps=prof["reps"], seed=cfg["seed"],
                           energy_meter=meter)
         r["power_before"], r["power_after"] = before, (power_state() if device == "cpu" else None)
+        r["quantize"], r["torch_threads"] = quant, torch.get_num_threads()
+        r["ppl_wikitext2_first_windows"] = {"windows": n_win, "ppl": ppl} if n_win else None
         results[name] = r
         run.write_json("profiles.json", results)
-        row = {"variant": name, "n_params": r["n_params"], "weight_gb": r["weight_bytes"] / 1024 ** 3,
+        from qacr.runtime.fast import linear_weight_bytes
+        row = {"variant": name, "quantize": quant, "threads": torch.get_num_threads(), "ppl_subset": ppl,
+               "linear_weight_gb": linear_weight_bytes(model) / 1024 ** 3,
+               "n_params": r["n_params"], "weight_gb": r["weight_bytes"] / 1024 ** 3,
                "decode_ms_per_tok": r["generate"]["decode_ms_per_tok"], "gen_tokens_per_s": r["generate"]["tokens_per_s"]}
         for L in prof["prompt_lens"]:
             row[f"prefill_ms_{L}"] = r["prefill"][L]["median_ms"]
