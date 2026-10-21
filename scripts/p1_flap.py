@@ -72,6 +72,18 @@ def main(argv: list[str] | None = None) -> int:
     cal = cfg["calibration"]
     t0 = time.perf_counter()
     calib, testenc = wikitext2(tok, cal["nsamples"], cal["seed"], cal["seqlen"])
+    source = cal.get("source", "wikitext2")
+    if source == "pool_train":
+        import pandas as pd
+
+        from qacr.pruning.calib import pool_calibration
+        pool = pd.read_parquet(REPO / get_dotted(cfg, "pool_path", "data/p2/query_pool.parquet"))
+        calib, cal_info = pool_calibration(tok, pool, cal["nsamples"], cal["seed"], cal["seqlen"])
+        run.write_json("calibration.json", {"source": source, **cal_info})
+        log.info("calibration replaced by pool train-split questions: %s", cal_info)
+    elif source != "wikitext2":
+        raise ValueError(f"unknown calibration.source {source}")
+    flap_tag = get_dotted(cfg, "flap_tag", "flap")
     log.info("wikitext2: %d calibration windows x %d tokens; test %d tokens (%.0fs)", len(calib), cal["seqlen"],
              testenc.numel(), time.perf_counter() - t0)
     calib_wanda = calib[: get_dotted(cfg, "baselines.wanda_nsamples", 128)]
@@ -96,7 +108,7 @@ def main(argv: list[str] | None = None) -> int:
                                                 "seconds": time.perf_counter() - t0})
             log.info("FLAP scores computed in %.1fs", time.perf_counter() - t0)
 
-    jobs = [("none", 0.0)] + [("flap", r) for r in flap_ratios]
+    jobs = ([("none", 0.0)] if get_dotted(cfg, "include_unpruned", True) else []) + [(flap_tag, r) for r in flap_ratios]
     jobs += [(m, float(r)) for m in get_dotted(cfg, "baselines.methods", []) for r in cfg["baselines"]["ratios"]]
 
     csv_path = run.path("sweep.csv")
@@ -119,8 +131,9 @@ def main(argv: list[str] | None = None) -> int:
             plan = PrunePlan.load(plan_path)
         elif method == "none":
             plan = unpruned_plan(base)
-        elif method == "flap":
+        elif method == flap_tag:
             plan = flap_plan(base, scores, ratio, meta={"base": base_id, "calibration": cal})
+            plan.method = flap_tag
         elif method == "wanda_sp":
             plan = wanda_sp_plan(base, calib_wanda, ratio, device, log=log.info)
             plan.meta.update({"base": base_id, "calibration": {**cal, "nsamples": len(calib_wanda)}})
