@@ -17,7 +17,9 @@ On a Tesla T4, FLAP raises WikiText-2 perplexity from 18.48 to 25.94 at 20% and 
 
 On 3,849 test questions, macro accuracy falls from 62.5% (unpruned) to 47.3% (FLAP 20%), 40.0% (FLAP 35%) and 32.6% (FLAP 50%). Several pruned variants collapse to a constant answer on MMLU and BoolQ, and fail to finish GSM8K answers.
 
-A per-query oracle over the variants reaches 75.8%, against 64.1% for the best fixed variant. But once variants that do not beat a constant answer are excluded, the gain shrinks to 1.9 points (66.1%). So on this GPU the headroom for per-query compression routing is small. Laptop-CPU latencies are pending.
+A per-query oracle over the variants reaches 75.8%, against 64.1% for the best fixed variant. But once variants that do not beat a constant answer are excluded, the gain shrinks to 1.9 points (66.1%). So on this GPU the headroom for per-query compression routing is small.
+
+Calibrating FLAP on train-split questions instead of Wikipedia, with no retraining, raises macro accuracy by 2.4, 5.2 and 4.3 points at 10/20/35% (all McNemar p ≤ 7.3e-08), and largely removes the constant-answer collapse at 10–20%. Laptop-CPU latencies are pending.
 
 ---
 
@@ -441,9 +443,69 @@ We therefore also report an **informative oracle**: on each task, a variant may 
 - **Where the real gain comes from.** It comes only from ARC-Easy (+4.6), HellaSwag (+2.8), PIQA (+5.2) and GSM8K (+4.2), the tasks where the pruned variants still carry real information.
 - **The variants fail on the same questions.** The observed oracle (75.8%) is far below the independent-errors reference (92.5%).
 - **24.2%** of test questions are answered correctly by no variant.
-- **Answer to RQ2 (on the T4):** with FLAP at 20–50% on this 1.7 B model, per-query compression routing has little to gain. The pruned variants either collapse on a task or cost about the same per multiple-choice question, and they cost more on generation. Whether this changes under an edge-CPU cost model, and at milder ratios (10–20%), is the next question (Section 11).
+- **Answer to RQ2 (on the T4):** with FLAP at 20–50% on this 1.7 B model, per-query compression routing has little to gain. The pruned variants either collapse on a task or cost about the same per multiple-choice question, and they cost more on generation. Whether this changes under an edge-CPU cost model, and with milder, in-domain-calibrated variants, is examined in Section 9.4.
 
-### 9.4 Query-level confidence cascade (offline)
+### 9.4 Fix: in-domain calibration of FLAP
+
+**Why.** The collapse in Table 5 suggested that FLAP, calibrated on Wikipedia text, removes channels the model needs for the question–answer format.
+
+**What changed.** We re-ran FLAP with exactly the same settings (1024 windows of 128 tokens, seed 0), but calibrated on the **questions and answer options of the train split**:
+- never the answers;
+- never test questions.
+
+The comparison below is at matched ratios, on the same 3,849 test questions. W = WikiText-calibrated, D = in-domain-calibrated, **bold** = D higher.
+
+| Task | Unpruned | W 10% | D 10% | W 20% | D 20% | W 35% | D 35% |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| ARC-Easy | 78.1 | 72.0 | **74.5** | 65.1 | **69.7** | 53.7 | **60.6** |
+| ARC-Challenge | 51.1 | 42.6 | **43.0** | 33.6 | **39.6** | 31.9 | 31.9 |
+| HellaSwag | 72.2 | 65.2 | **68.8** | 56.5 | **62.9** | 39.6 | **46.0** |
+| WinoGrande | 66.1 | 64.2 | 61.0 | 57.5 | **59.4** | 50.4 | **52.8** |
+| PIQA | 81.2 | 79.0 | **79.3** | 74.4 | **78.7** | 65.9 | **72.5** |
+| BoolQ | 73.2 | 70.9 | 69.7 | 63.3 | **68.3** | 52.1 | **63.8** |
+| MMLU | 46.4 | 30.5 | **43.0** | 24.8 | **39.2** | 24.1 | **25.6** |
+| GSM8K | 31.8 | 8.3 | **12.9** | 3.0 | 1.9 | 2.3 | 1.5 |
+| **Macro average** | **62.5** | 54.1 | **56.5** | 47.3 | **52.5** | 40.0 | **44.3** |
+
+*Table 10. Accuracy (%) of WikiText- vs. in-domain-calibrated FLAP on the test split.*
+
+| Ratio | Macro gain, pts (95% CI) | Questions fixed / broken | McNemar p | MMLU top-answer % | GSM8K at limit % | WikiText-2 PPL |
+|---|---|---|---:|---|---|---|
+| 10% | **+2.42** (+1.10 to +3.75) | 395 / 257 | 7e-08 | 84 → 32 | 24 → 12 | 20.8 → 22.1 |
+| 20% | **+5.21** (+3.85 to +6.51) | 507 / 253 | 2e-20 | 87 → 43 | 80 → 78 | 25.9 → 39.7 |
+| 35% | **+4.32** (+2.72 to +6.00) | 633 / 433 | 1e-09 | 100 → 80 | 100 → 86 | 51.1 → 89.1 |
+
+*Table 11. Effect of in-domain calibration (W → D).*
+- "Fixed / broken" counts the questions that only D, or only W, answers correctly.
+- "MMLU top-answer %" is the share of questions given the most frequent answer (unpruned: 32%).
+
+**Result.**
+- **Macro accuracy improves at every ratio.** The largest gain is at 20%: **+5.2 points** (95% CI +3.8 to +6.5).
+- **The MMLU collapse largely disappears at 10% and 20%.**
+  - The most frequent answer covers 32% and 43% of questions, against 32% for the unpruned model.
+  - At 20%, MMLU accuracy rises from 24.8% to 39.2%.
+  - In-domain FLAP-10% keeps 43.0% on MMLU, against 46.4% for the unpruned model.
+- **The collapse persists at 35%.**
+- **Not every task improves:**
+  - WinoGrande and BoolQ at 10%;
+  - GSM8K at 20% and 35%.
+- **WikiText-2 perplexity increases**, as expected when the calibration text is no longer Wikipedia.
+- **Integrity:** all variants received identical prompts, and every run came from a clean commit.
+
+**Headroom with the new ladders.** We repeated the oracle analysis for four-variant ladders (unpruned plus three pruned variants). Comparing ladders at the same ratios separates the effect of calibration from the effect of including a milder 10% variant.
+
+| Ladder | Best fixed | Oracle | Informative oracle | Informative cost (ms) | Unpruned picked (%) |
+|---|---:|---:|---:|---:|---:|
+| W 20/35/50 (original) | 64.1 | 75.8 | 66.1 | 291 | 95.7 |
+| W 10/20/35 | 64.1 | 74.3 | 71.0 | 272 | 89.3 |
+| D 10/20/35 | 64.1 | 74.5 | **71.9** | **239** | 84.6 |
+
+*Table 12. Four-variant ladders on the test split (accuracy in %, T4 cost model).*
+
+- **Most of the extra headroom comes from the milder 10% variant.** The gain from 66.1 to 71.0 needs no calibration change; in-domain calibration then adds +0.9 points and lowers the oracle's cost from 272 to 239 ms.
+- **These are upper bounds.** With several partly-guessing variants, part of any oracle's gain comes from lucky answers that no router could predict. A realistic router is evaluated in Phase 3.
+
+### 9.5 Query-level confidence cascade (offline)
 
 **How it works.** A cheap variant answers each multiple-choice question first. Its answer is kept if its confidence (the probability of its chosen option) is at least τ; otherwise the question is escalated to the unpruned model.
 
@@ -465,7 +527,7 @@ We therefore also report an **informative oracle**: on each task, a variant may 
 | FLAP 50% | 0.5 | 3.7 | 0.50 (0.22–0.83) | 2.02× | 1.49× |
 | FLAP 50% | 1.0 | 6.5 | 1.22 (0.72–1.78) | 2.00× | 1.46× |
 
-*Table 10. Confidence cascade on the held-out half of the multiple-choice test questions.*
+*Table 13. Confidence cascade on the held-out half of the multiple-choice test questions.*
 - The T4 column uses the measured cost model.
 - The parameter-ratio column is a device-independent reference, not a measurement.
 
@@ -483,10 +545,12 @@ We therefore also report an **informative oracle**: on each task, a variant may 
 | Finding | Evidence | Outcome |
 |---|---|---|
 | FLAP vs. baselines | FLAP < Wanda-SP < Magnitude-SP in perplexity at every ratio tested | ✅ positive |
+| **In-domain calibration (fix)** | macro **+2.4 / +5.2 / +4.3** pts at 10 / 20 / 35% (all McNemar p ≤ 7.3e-08); MMLU collapse largely removed at 10–20% | ✅ **positive** |
 | Light pruning (10%) | WikiText-2 perplexity 18.48 → 20.82 | ✅ positive |
 | GPU energy and memory (50%) | −27% energy per token; peak memory 6.48 → 5.00 GB | ✅ positive |
 | GPU prefill (50%) | −35% (512 tokens), −38% (1024 tokens) | ✅ positive |
-| Routing headroom | +1.9 pts with the informative oracle (naive oracle: +11.7) | ✅ small positive |
+| Routing headroom, original ladder | +1.9 pts with the informative oracle (naive oracle: +11.7) | ✅ small positive |
+| Routing headroom, new ladder | informative oracle 71.9% vs. best fixed 64.1%, at 239 vs. 292 ms (upper bound) | ✅ positive (bound) |
 | Overclaim prevented | informative oracle separates real headroom from constant-answer artifacts | ✅ positive (method) |
 | GPU decode latency | 30.4–31.1 ms/token at every ratio | ❌ negative |
 | Accuracy (macro) | 62.5% → 47.3 / 40.0 / 32.6% at 20 / 35 / 50% | ❌ negative |
@@ -498,41 +562,51 @@ We therefore also report an **informative oracle**: on each task, a variant may 
 1. **FLAP reproduces on a small edge model.**
    - On SmolLM2-1.7B, FLAP beats Wanda-SP and Magnitude-SP at every ratio tested. The FLAP paper reports the same ranking for LLaMA models of 7 B parameters and larger.
    - Light pruning is almost free in quality: FLAP-10% moves perplexity only from 18.48 to 20.82.
-2. **Pruning saves energy, memory and prompt-processing time on the GPU.** At 50% pruning:
+2. **In-domain calibration fixes much of the damage, without retraining.**
+   - Calibrating FLAP on train-split questions (no answers) instead of Wikipedia raises macro accuracy by **+2.4, +5.2 and +4.3 points** at 10 / 20 / 35% (all McNemar p ≤ 7.3e-08).
+   - At 20%, MMLU accuracy rises from 24.8% to 39.2%.
+   - In-domain FLAP-10% keeps 43.0% on MMLU, against 46.4% for the unpruned model (Section 9.4).
+3. **Milder, better-calibrated variants give routing real room.**
+   - For the ladder unpruned + in-domain FLAP 10/20/35%, the informative oracle reaches **71.9%**, against 64.1% for the best fixed variant.
+   - It does so at 239 rather than 292 ms per question on the T4 (Table 12).
+   - This is an upper bound, partly inflated by lucky answers; a realistic router is the next step.
+4. **Pruning saves energy, memory and prompt-processing time on the GPU.** At 50% pruning:
    - energy per generated token falls by **27%** (2.09 → 1.52 J);
    - peak memory falls from **6.48 to 5.00 GB**;
    - prefill latency falls by **35–38%**.
-3. **Per-query routing has real, if small, headroom.**
+5. **Per-query routing has real, if small, headroom (original ladder).**
    - After excluding every variant that does not beat a constant answer, the oracle still exceeds the best fixed variant by **+1.9 points** (64.1% → 66.1%) at the same cost.
    - The gains come from PIQA (+5.2), ARC-Easy (+4.6), GSM8K (+4.2) and HellaSwag (+2.8).
    - On PIQA, FLAP-50% keeps 60.8% accuracy (constant answer: 50.1%) with **47% fewer parameters**.
-4. **A method that prevents an overclaim.**
+6. **A method that prevents an overclaim.**
    - A naive oracle suggests +11.7 points of routing gain.
    - The *informative oracle* shows that most of it comes from variants that always give the same answer, and measures the gain a router could actually use.
-5. **The pruned model's confidence is a usable signal.** At a 0.5-point budget, FLAP-20% can answer about 1 in 5 multiple-choice questions on its own (Table 10).
-6. **Reliable, reproducible infrastructure.**
+7. **The pruned model's confidence is a usable signal.** At a 0.5-point budget, FLAP-20% can answer about 1 in 5 multiple-choice questions on its own (Table 13).
+8. **Reliable, reproducible infrastructure.**
    - Results are identical question by question across runs on different days.
    - Every result is cross-checked against lm-eval.
    - Several silent errors were found and fixed (Appendix A).
 
 ### What did not work
 
-1. **Accuracy falls steeply beyond 20%.**
+1. **With Wikipedia calibration, accuracy falls steeply beyond 20%.**
    - Macro accuracy goes from 62.5% to 47.3 / 40.0 / 32.6%.
    - On MMLU, FLAP-35% and FLAP-50% give the same answer to every question.
    - On GSM8K, the pruned variants reach the 256-token limit on 80–100% of questions.
+   - In-domain calibration repairs much of this at 10–20%, but not at 35% (Section 9.4).
 2. **No generation speed-up on the T4.** Decode latency is 30.4–31.1 ms/token at every ratio, so routing saves no latency on this GPU.
 3. **The query-level cascade costs more, not less (1.86–2.03×).** Escalated questions pay for both models, and the share the cheap variant answers stays below its cost ratio.
 4. **No trustworthy laptop-CPU timings yet** (Section 9.2).
 
 ### What is next: the fix for the lack of improvement
 
-The diagnosis points to three concrete fixes:
+The diagnosis points to three concrete fixes. The first is already working:
 
-1. **Better cheap variants.**
-   - Calibrate FLAP on in-domain questions from the train split (questions only, never the answers) instead of Wikipedia text.
-   - Evaluate milder ratios (10–30%).
-   - Aim: stop the constant-answer collapse, so the cheap tier is both cheaper and still useful.
+1. **Better cheap variants: first fix done, extending it.**
+   - In-domain calibration and the 10% variant are measured (Section 9.4).
+   - Next: in-domain calibration at 30% and 50%.
+   - Run the train/validation splits for the chosen ladder.
+   - Test a short LoRA recovery where collapse persists (35% and above).
 2. **Cascade fix: a token-level cascade (speculative decoding).**
    - A pruned, int8-quantised copy of the model drafts several tokens.
    - The unpruned model verifies all of them in one forward pass and keeps the ones it agrees with.
@@ -549,7 +623,7 @@ The diagnosis points to three concrete fixes:
 
 | Dates (2026) | Work package | Tasks | Deliverable |
 |---|---|---|---|
-| **22 – 28 Oct** | Better cheap variants | In-domain-calibrated FLAP and FLAP-10%: outcome runs on the test split; compare with the WikiText-calibrated variants (accuracy, collapse, informative oracle). | Variant set for the rest of the thesis |
+| **22 – 28 Oct** | Better cheap variants | *Done in part:* in-domain-calibrated FLAP at 10/20/35% and FLAP-10% evaluated on the test split (Section 9.4). Remaining: in-domain calibration at 30% and 50%; choose the ladder. | Variant set for the rest of the thesis |
 | **29 Oct – 4 Nov** | **Cascade fix** | Token-level cascade (speculative decoding) with pruned + int8 drafts; sweep draft ratio (10–50%), draft length (3–8 tokens) and the draft's confidence stop; paired timing on the laptop CPU and the T4; verify output identical to the unpruned model. | Speed-up with 95% CI at identical output |
 | **5 – 11 Nov** | Faster execution | Static KV cache + CUDA graphs on the T4; int8 + P-core thread pinning on the CPU; controlled CPU latency measurement; optional short LoRA recovery if accuracy is still too low. | Measured cost model per device |
 | **12 – 18 Nov** | Routers | Outcome runs on train/validation; rule-based, kNN, logistic-regression and MLP routers; task-type and RouterBench-trained baselines; offline replay against the informative oracle. | Accuracy–cost curves |

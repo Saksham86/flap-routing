@@ -1,0 +1,23 @@
+phase: p2
+run_name: compare_calibration
+seed: 0
+n_boot: 2000
+gsm8k_cap: 256
+paths:
+  results_root: null
+reference: v0
+ratios:
+- 0.1
+- 0.2
+- 0.35
+sweeps:
+  wikitext: results/p1/20261019-144738_flap_sweep
+  indomain: results/p1/20261021-125817_flap_taskcal
+outcomes:
+  v0: results/p2/20261021-105141_outcomes
+  flap_0.10: results/p2/20261021-135317_outcomes
+  flap_0.20: results/p2/20261021-111206_outcomes
+  flap_0.35: results/p2/20261021-112239_outcomes
+  flaptask_0.10: results/p2/20261021-140540_outcomes
+  flaptask_0.20: results/p2/20261021-132342_outcomes
+  flaptask_0.35: results/p2/20261021-134247_outcomes

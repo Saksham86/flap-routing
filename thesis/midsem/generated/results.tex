@@ -160,6 +160,59 @@ FLAP 50\% & 23.4 & 8.3 & 40.7 & 27.6 \\
 \caption{Outcome overlap with the unpruned model (\% of test questions).}\label{tab:pair}
 \end{table}
 
+\subsection{Fix: in-domain calibration of FLAP}
+The collapse in Table~\ref{tab:collapse} suggested that FLAP, calibrated on Wikipedia text, removes channels the model needs for the question--answer format. We therefore re-ran FLAP with exactly the same settings (1024 windows of 128 tokens, seed 0) but calibrated on the \emph{questions and answer options of the train split} (no answers, no test questions). Table~\ref{tab:calib} compares the two at matched ratios on the same 3{,}849 test questions (W: WikiText-calibrated, D: in-domain-calibrated; bold where D is higher).
+
+\begin{table}[!htbp]\centering\small
+\begin{tabular}{lrrrrrrr}
+\toprule
+Task & Unpruned & W 10\% & D 10\% & W 20\% & D 20\% & W 35\% & D 35\% \\
+\midrule
+ARC-Easy & 78.1 & 72.0 & \textbf{74.5} & 65.1 & \textbf{69.7} & 53.7 & \textbf{60.6} \\
+ARC-Challenge & 51.1 & 42.6 & \textbf{43.0} & 33.6 & \textbf{39.6} & 31.9 & 31.9 \\
+HellaSwag & 72.2 & 65.2 & \textbf{68.8} & 56.5 & \textbf{62.9} & 39.6 & \textbf{46.0} \\
+WinoGrande & 66.1 & 64.2 & 61.0 & 57.5 & \textbf{59.4} & 50.4 & \textbf{52.8} \\
+PIQA & 81.2 & 79.0 & \textbf{79.3} & 74.4 & \textbf{78.7} & 65.9 & \textbf{72.5} \\
+BoolQ & 73.2 & 70.9 & 69.7 & 63.3 & \textbf{68.3} & 52.1 & \textbf{63.8} \\
+MMLU & 46.4 & 30.5 & \textbf{43.0} & 24.8 & \textbf{39.2} & 24.1 & \textbf{25.6} \\
+GSM8K & 31.8 & 8.3 & \textbf{12.9} & 3.0 & 1.9 & 2.3 & 1.5 \\
+\midrule
+Macro average & 62.5 & 54.1 & \textbf{56.5} & 47.3 & \textbf{52.5} & 40.0 & \textbf{44.3} \\
+\bottomrule
+\end{tabular}
+\caption{Accuracy (\%) of WikiText- vs.\ in-domain-calibrated FLAP on the test split.}\label{tab:calib}
+\end{table}
+
+\begin{table}[!htbp]\centering\small
+\begin{tabular}{lllrlll}
+\toprule
+Ratio & Macro gain, pts (95\% CI) & Fixed / broken & McNemar $p$ & MMLU top-answer \% & GSM8K at limit \% & WikiText-2 PPL \\
+\midrule
+10\% & $+$2.42 (+1.10 to +3.75) & 395 / 257 & 7e-08 & 84 $\to$ 32 & 24 $\to$ 12 & 20.8 $\to$ 22.1 \\
+20\% & $+$5.21 (+3.85 to +6.51) & 507 / 253 & 2e-20 & 87 $\to$ 43 & 80 $\to$ 78 & 25.9 $\to$ 39.7 \\
+35\% & $+$4.32 (+2.72 to +6.00) & 633 / 433 & 1e-09 & 100 $\to$ 80 & 100 $\to$ 86 & 51.1 $\to$ 89.1 \\
+\bottomrule
+\end{tabular}
+\caption{Effect of in-domain calibration (W $\to$ D). ``Fixed / broken'': questions that only D / only W answers correctly. MMLU top-answer \%: share of questions given the most frequent answer (unpruned: 32\%).}\label{tab:calibsig}
+\end{table}
+
+In-domain calibration improves macro accuracy at every ratio; the largest gain is at 20\% ($+$5.2 points, 95\% CI +3.8 to +6.5). The constant-answer collapse on MMLU largely disappears at 10\% and 20\% (most frequent answer 32\% and 43\% of questions, against 32\% for the unpruned model) but persists at 35\%. Not every task improves (Table~\ref{tab:calib}), and WikiText-2 perplexity increases, as expected when the calibration text is no longer Wikipedia.
+
+\paragraph{Headroom with the new ladders.} Table~\ref{tab:ladders} repeats the oracle analysis for four-variant ladders (unpruned plus three pruned variants). Comparing ladders at the same ratios separates the effect of calibration from the effect of including a milder 10\% variant. With several partly guessing variants, part of any oracle's gain comes from lucky answers that no router could predict, so these values are upper bounds; a realistic router is evaluated in Phase~3.
+
+\begin{table}[!htbp]\centering\small
+\begin{tabular}{lrrrrr}
+\toprule
+Ladder & Best fixed & Oracle & Inf.\ oracle & Inf.\ cost (ms) & Unpruned picked (\%) \\
+\midrule
+W 20/35/50 (original) & 64.1 & 75.8 & 66.1 & 291 & 95.7 \\
+W 10/20/35 & 64.1 & 74.3 & 71.0 & 272 & 89.3 \\
+D 10/20/35 & 64.1 & 74.5 & 71.9 & 239 & 84.6 \\
+\bottomrule
+\end{tabular}
+\caption{Four-variant ladders on the test split (accuracy in \%, T4 cost model).}\label{tab:ladders}
+\end{table}
+
 \subsection{Query-level confidence cascade (offline)}
 A cheap variant answers each multiple-choice question first; its answer is kept if its confidence (the probability of its chosen option) is at least $\tau$, otherwise the question is escalated to the unpruned model. The test questions are split into two fixed halves: $\tau$ is chosen on one half (largest share served within an accuracy-loss budget) and all numbers are reported on the other half. Escalated questions pay for both models, so the cascade is cheaper than the unpruned model only if the share served exceeds the cheap model's cost ratio.
 

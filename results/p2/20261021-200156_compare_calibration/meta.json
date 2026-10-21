@@ -1,0 +1,17 @@
+{
+  "run_id": "20261021-200156_compare_calibration",
+  "phase": "p2",
+  "seed": 0,
+  "started": "2026-10-21T20:01:56",
+  "argv": [
+    "scripts/p2_compare_calibration.py",
+    "--config",
+    "configs/p2_compare_calibration.yaml"
+  ],
+  "git": {
+    "commit": "8c887b38a75cd504ca44b835777133262f2bf237",
+    "dirty": false,
+    "dirty_files": []
+  },
+  "resumed": false
+}

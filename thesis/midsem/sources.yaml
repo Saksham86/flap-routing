@@ -7,3 +7,8 @@ p1_sweep_dir: results/p1/20261019-144738_flap_sweep
 cpu_profile_dirs: []        # laptop CPU profiles on AC power (earlier battery-throttled runs are marked INVALID)
 p2_analysis_dir: results/p2/20261021-174250_analyze
 p6_cascade_dir: results/p6/20261021-184502_cascade
+calibration_comparison_dir: results/p2/20261021-200156_compare_calibration
+ladders:
+  "W 20/35/50 (original)": results/p2/20261021-174250_analyze
+  "W 10/20/35": results/p2/20261021-200037_analyze_flapladder
+  "D 10/20/35": results/p2/20261021-195954_analyze_taskladder

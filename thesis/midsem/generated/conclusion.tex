@@ -4,12 +4,14 @@
 Finding & Evidence & Outcome \\
 \midrule
 FLAP vs.\ baselines & FLAP $<$ Wanda-SP $<$ Mag-SP in perplexity at every ratio & \textbf{positive} \\
+In-domain calibration (fix) & macro $+$2.4 / $+$5.2 / $+$4.3 pts at 10/20/35\% (all McNemar $p\le$7.3e-08); MMLU collapse largely removed at 10--20\% & \textbf{positive} \\
 Light pruning (10\%) & perplexity 18.48 $\to$ 20.82 & \textbf{positive} \\
 GPU energy / memory (50\%) & $-$27\% J/token; 6.48 $\to$ 5.00\,GB & \textbf{positive} \\
 GPU prefill (50\%) & $-$35\% (512 tok), $-$38\% (1024 tok) & \textbf{positive} \\
 GPU decode & 30.4--31.1\,ms/token at every ratio & negative \\
 Accuracy (macro) & 62.5\% $\to$ 47.3 / 40.0 / 32.6\% (20/35/50\%) & negative \\
-Routing headroom & $+$1.9 pts (informative oracle; naive $+$11.7) & small positive \\
+Routing headroom, original ladder & $+$1.9 pts (informative oracle; naive $+$11.7) & small positive \\
+Routing headroom, new ladder & inf.\ oracle 71.9\% vs.\ best fixed 64.1\% at 239 vs.\ 292\,ms (upper bound) & \textbf{positive} (bound) \\
 Query-level cascade & costs 1.86--2.03$\times$ the unpruned model on the T4 & negative \\
 Laptop-CPU latency & not reliable enough to report & pending \\
 \bottomrule
@@ -20,6 +22,8 @@ Laptop-CPU latency & not reliable enough to report & pending \\
 \paragraph{What worked.}
 \begin{itemize}
 \item \emph{FLAP reproduces on a small edge model.} On SmolLM2-1.7B the ranking FLAP $<$ Wanda-SP $<$ Magnitude-SP in perplexity holds at every ratio tested, as the FLAP paper reports for LLaMA models of 7\,B parameters and larger. Light pruning is cheap in quality: FLAP-10\% moves WikiText-2 perplexity only from 18.48 to 20.82.
+\item \emph{In-domain calibration fixes much of the damage, without retraining.} Calibrating FLAP on train-split questions instead of Wikipedia raises macro accuracy by 2.4 (10\%), 5.2 (20\%), 4.3 (35\%) points (all McNemar $p\le$7.3e-08). At 20\% MMLU accuracy rises from 24.8\% to 39.2\%, and in-domain FLAP-10\% keeps 43.0\% on MMLU against 46.4\% for the unpruned model.
+\item \emph{Milder, better-calibrated variants give routing real room.} For the ladder unpruned + in-domain FLAP 10/20/35\%, the informative oracle reaches 71.9\% against 64.1\% for the best fixed variant, at 239 rather than 292\,ms per question on the T4 (Table~\ref{tab:ladders}). This is an upper bound, partly inflated by lucky answers; a realistic router is the next step.
 \item \emph{Pruning gives measurable resource savings on the GPU.} At 50\%, energy per generated token falls by 27\% (2.09 to 1.52\,J), peak memory from 6.48 to 5.00\,GB, and prefill latency by 35\% (512 tokens) and 38\% (1024 tokens).
 \item \emph{Per-query routing has real, if small, headroom.} After excluding every variant that does not beat a constant answer, the oracle still exceeds the best fixed variant by 1.9 points (64.1\% to 66.1\%) at the same cost, with gains on PIQA $+$5.2, ARC-Easy $+$4.6, GSM8K $+$4.2, HellaSwag $+$2.8. On PIQA, FLAP-50\% keeps 60.8\% accuracy (constant answer: 50.1\%) with 47\% fewer parameters.
 \item \emph{A method that prevents an overclaim.} The plain oracle would suggest a routing gain of 11.7 points; most of it comes from variants that answer every question identically. The informative oracle introduced here measures the gain a router could actually exploit.
@@ -34,7 +38,7 @@ Laptop-CPU latency & not reliable enough to report & pending \\
 \end{itemize}
 \paragraph{What is next.}
 \begin{itemize}
-\item \emph{Better cheap variants:} FLAP calibrated on in-domain questions from the train split (no answers) and milder ratios (10--30\%), to test whether the pruned variants stay above the constant-answer baseline on more tasks.
+\item \emph{Build on the calibration fix:} extend in-domain calibration to 30\% and 50\%, run the train/validation splits for the chosen ladder, and test a short LoRA recovery where collapse persists (35\% and above).
 \item \emph{Cascade fix:} a token-level cascade (speculative decoding) in which a pruned, int8-quantised copy of the model drafts tokens and the unpruned model verifies several of them in one pass. Unlike the query-level cascade, no work is wasted on escalation, and with greedy decoding the output is identical to the unpruned model's by construction.
 \item \emph{Faster execution:} static KV cache with CUDA graphs on the GPU and int8 weights on the CPU (implemented and unit-tested, not yet measured), and a drift-robust CPU measurement protocol.
 \end{itemize}

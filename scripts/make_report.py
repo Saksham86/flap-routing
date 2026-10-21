@@ -390,6 +390,93 @@ def p6_section(src) -> str:
             "the planned fix is a token-level cascade (Section~\\ref{sec:plan}).\n\n")
 
 
+def _calib(src) -> dict | None:
+    if not src.get("calibration_comparison_dir"):
+        return None
+    return json.loads((REPO / src["calibration_comparison_dir"] / "calibration_comparison.json").read_text(encoding="utf-8"))
+
+
+def _ladders(src) -> list[tuple[str, dict]]:
+    out = []
+    for name, d in (src.get("ladders") or {}).items():
+        out.append((name, json.loads(sorted((REPO / d).glob("headroom_*.json"))[0].read_text(encoding="utf-8"))))
+    return out
+
+
+def calib_section(src) -> str:
+    c = _calib(src)
+    if not c:
+        return ""
+    rs = list(c["ratios"])
+    ref = c["reference"]
+    tasks = sorted(ref["per_task"], key=lambda t: list(TASK_NAMES).index(t) if t in TASK_NAMES else 99)
+    head = "Task & Unpruned & " + " & ".join(f"W {float(r) * 100:.0f}\\% & D {float(r) * 100:.0f}\\%" for r in rs)
+    rows = []
+    for t in tasks:
+        cells = [f"{ref['per_task'][t] * 100:.1f}"]
+        for r in rs:
+            w, d = c["ratios"][r]["wikitext"]["per_task"][t], c["ratios"][r]["indomain"]["per_task"][t]
+            cells += [f"{w * 100:.1f}", (f"\\textbf{{{d * 100:.1f}}}" if d > w else f"{d * 100:.1f}")]
+        rows.append(f"{TASK_NAMES[t]} & " + " & ".join(cells) + " \\\\")
+    mac = [f"{ref['macro'] * 100:.1f}"]
+    for r in rs:
+        mac += [f"{c['ratios'][r]['wikitext']['macro'] * 100:.1f}", f"\\textbf{{{c['ratios'][r]['indomain']['macro'] * 100:.1f}}}"]
+    srows = []
+    for r in rs:
+        x = c["ratios"][r]
+        srows.append(f"{float(r) * 100:.0f}\\% & $+${x['macro_diff'] * 100:.2f} ({x['macro_diff_ci95'][0] * 100:+.2f} to "
+                     f"{x['macro_diff_ci95'][1] * 100:+.2f}) & {x['questions_fixed']} / {x['questions_broken']} & "
+                     f"{x['mcnemar_p']:.0e} & {x['wikitext']['mmlu_max_answer_share'] * 100:.0f} $\\to$ "
+                     f"{x['indomain']['mmlu_max_answer_share'] * 100:.0f} & {x['wikitext']['gsm8k_share_at_cap'] * 100:.0f} "
+                     f"$\\to$ {x['indomain']['gsm8k_share_at_cap'] * 100:.0f} & {x['wikitext']['ppl_wikitext2']:.1f} $\\to$ "
+                     f"{x['indomain']['ppl_wikitext2']:.1f} \\\\")
+    lad = _ladders(src)
+    lrows = []
+    for name, h in lad:
+        io = h["informative_oracle"]
+        lrows.append(f"{tex_escape(name)} & {h['best_fixed']['accuracy'] * 100:.1f} & {h['oracle']['accuracy'] * 100:.1f} & "
+                     f"{io['accuracy'] * 100:.1f} & {io['cost_ms']:.0f} & {io['pick_share'].get('v0', 0) * 100:.1f} \\\\")
+    best = max(rs, key=lambda r: c["ratios"][r]["macro_diff"])
+    xb = c["ratios"][best]
+    s = ("\\subsection{Fix: in-domain calibration of FLAP}\n"
+         "The collapse in Table~\\ref{tab:collapse} suggested that FLAP, calibrated on Wikipedia text, removes channels "
+         "the model needs for the question--answer format. We therefore re-ran FLAP with exactly the same settings "
+         "(1024 windows of 128 tokens, seed 0) but calibrated on the \\emph{questions and answer options of the train "
+         "split} (no answers, no test questions). Table~\\ref{tab:calib} compares the two at matched ratios on the same "
+         f"{fmt_int(c['n_questions'])} test questions (W: WikiText-calibrated, D: in-domain-calibrated; bold where D is "
+         "higher).\n\n"
+         "\\begin{table}[!htbp]\\centering\\small\n\\begin{tabular}{lr" + "rr" * len(rs) + "}\n\\toprule\n" + head
+         + " \\\\\n\\midrule\n" + "\n".join(rows) + "\n\\midrule\nMacro average & " + " & ".join(mac)
+         + " \\\\\n\\bottomrule\n\\end{tabular}\n\\caption{Accuracy (\\%) of WikiText- vs.\\ in-domain-calibrated FLAP "
+           "on the test split.}\\label{tab:calib}\n\\end{table}\n\n"
+         "\\begin{table}[!htbp]\\centering\\small\n\\begin{tabular}{lllrlll}\n\\toprule\n"
+         "Ratio & Macro gain, pts (95\\% CI) & Fixed / broken & McNemar $p$ & MMLU top-answer \\% & GSM8K at limit \\% & "
+         "WikiText-2 PPL \\\\\n\\midrule\n" + "\n".join(srows) + "\n\\bottomrule\n\\end{tabular}\n"
+         "\\caption{Effect of in-domain calibration (W $\\to$ D). ``Fixed / broken'': questions that only D / only W "
+         "answers correctly. MMLU top-answer \\%: share of questions given the most frequent answer (unpruned: "
+         f"{ref['mmlu_max_answer_share'] * 100:.0f}\\%).}}\\label{{tab:calibsig}}\n\\end{{table}}\n\n"
+         f"In-domain calibration improves macro accuracy at every ratio; the largest gain is at {float(best) * 100:.0f}\\% "
+         f"($+${xb['macro_diff'] * 100:.1f} points, 95\\% CI {xb['macro_diff_ci95'][0] * 100:+.1f} to "
+         f"{xb['macro_diff_ci95'][1] * 100:+.1f}). The constant-answer collapse on MMLU largely disappears at 10\\% and "
+         "20\\% (most frequent answer "
+         f"{c['ratios'][rs[0]]['indomain']['mmlu_max_answer_share'] * 100:.0f}\\% and "
+         f"{c['ratios'][rs[1]]['indomain']['mmlu_max_answer_share'] * 100:.0f}\\% of questions, against "
+         f"{ref['mmlu_max_answer_share'] * 100:.0f}\\% for the unpruned model) but persists at 35\\%. Not every task "
+         "improves (Table~\\ref{tab:calib}), and WikiText-2 perplexity increases, as expected when the calibration text "
+         "is no longer Wikipedia.\n\n")
+    if lrows:
+        s += ("\\paragraph{Headroom with the new ladders.} Table~\\ref{tab:ladders} repeats the oracle analysis for "
+              "four-variant ladders (unpruned plus three pruned variants). Comparing ladders at the same ratios separates "
+              "the effect of calibration from the effect of including a milder 10\\% variant. With several partly "
+              "guessing variants, part of any oracle's gain comes from lucky answers that no router could predict, so "
+              "these values are upper bounds; a realistic router is evaluated in Phase~3.\n\n"
+              "\\begin{table}[!htbp]\\centering\\small\n\\begin{tabular}{lrrrrr}\n\\toprule\n"
+              "Ladder & Best fixed & Oracle & Inf.\\ oracle & Inf.\\ cost (ms) & Unpruned picked (\\%) \\\\\n\\midrule\n"
+              + "\n".join(lrows) + "\n\\bottomrule\n\\end{tabular}\n\\caption{Four-variant ladders on the test split "
+              "(accuracy in \\%, T4 cost model).}\\label{tab:ladders}\n\\end{table}\n\n")
+    return s
+
+
 def _p1_numbers(src) -> dict | None:
     if not src.get("p1_sweep_dir"):
         return None
@@ -443,6 +530,14 @@ def abstract(src) -> str:
               f"once variants that do not beat a constant answer are excluded the gain shrinks to "
               f"{p2['inf'] - p2['best']:.1f} points ({p2['inf']:.1f}\\%), so on this GPU the headroom for per-query "
               "compression routing is small. ")
+        cal = _calib(src)
+        if cal:
+            rs = list(cal["ratios"])
+            s += ("Calibrating FLAP on train-split questions instead of Wikipedia, with no retraining, raises macro "
+                  "accuracy by " + ", ".join(f"{cal['ratios'][r]['macro_diff'] * 100:.1f}" for r in rs)
+                  + " points at " + "/".join(f"{float(r) * 100:.0f}" for r in rs) + "\\% "
+                  f"(all McNemar $p\\le${max(cal['ratios'][r]['mcnemar_p'] for r in rs):.1e}) and largely removes the "
+                  "constant-answer collapse at 10--20\\%. ")
         if not src.get("cpu_profile_dirs"):
             s += "Laptop-CPU latencies are pending. "
     else:
@@ -496,8 +591,41 @@ def conclusion(src) -> str:
         casc = read_csv(REPO / src["p6_cascade_dir"] / "cascade.csv") if src.get("p6_cascade_dir") else []
         casc_cost = (f"{min(float(r['t4_cascade_cost']) for r in casc):.2f}--"
                      f"{max(float(r['t4_cascade_cost']) for r in casc):.2f}$\\times$") if casc else "--"
+        cal = _calib(src)
+        lad = dict(_ladders(src))
+        calrow, ladrow, cal_item, lad_item = [], [], "", ""
+        if cal:
+            rs = list(cal["ratios"])
+            diffs = " / ".join(f"$+${cal['ratios'][r]['macro_diff'] * 100:.1f}" for r in rs)
+            pmax = max(cal["ratios"][r]["mcnemar_p"] for r in rs)
+            calrow = [("In-domain calibration (fix)", f"macro {diffs} pts at "
+                       + "/".join(f"{float(r) * 100:.0f}" for r in rs) + f"\\% (all McNemar $p\\le${pmax:.1e}); MMLU "
+                       "collapse largely removed at 10--20\\%", "\\textbf{positive}")]
+            x10, x20 = cal["ratios"][rs[0]], cal["ratios"][rs[1]]
+            cal_item = (
+                "\\item \\emph{In-domain calibration fixes much of the damage, without retraining.} Calibrating FLAP on "
+                "train-split questions instead of Wikipedia raises macro accuracy by "
+                + ", ".join(f"{cal['ratios'][r]['macro_diff'] * 100:.1f} ({float(r) * 100:.0f}\\%)" for r in rs)
+                + f" points (all McNemar $p\\le${pmax:.1e}). At 20\\% MMLU accuracy rises from "
+                f"{x20['wikitext']['per_task']['mmlu'] * 100:.1f}\\% to {x20['indomain']['per_task']['mmlu'] * 100:.1f}\\%, "
+                f"and in-domain FLAP-10\\% keeps {x10['indomain']['per_task']['mmlu'] * 100:.1f}\\% on MMLU against "
+                f"{cal['reference']['per_task']['mmlu'] * 100:.1f}\\% for the unpruned model.\n")
+        if "D 10/20/35" in lad:
+            h = lad["D 10/20/35"]
+            io = h["informative_oracle"]
+            ladrow = [("Routing headroom, new ladder", f"inf.\\ oracle {io['accuracy'] * 100:.1f}\\% vs.\\ best fixed "
+                       f"{h['best_fixed']['accuracy'] * 100:.1f}\\% at {io['cost_ms']:.0f} vs.\\ "
+                       f"{h['static']['v0']['cost_ms']:.0f}\\,ms (upper bound)", "\\textbf{positive} (bound)")]
+            lad_item = (
+                "\\item \\emph{Milder, better-calibrated variants give routing real room.} For the ladder unpruned + "
+                "in-domain FLAP 10/20/35\\%, the informative oracle reaches "
+                f"{io['accuracy'] * 100:.1f}\\% against {h['best_fixed']['accuracy'] * 100:.1f}\\% for the best fixed "
+                f"variant, at {io['cost_ms']:.0f} rather than {h['static']['v0']['cost_ms']:.0f}\\,ms per question on the "
+                "T4 (Table~\\ref{tab:ladders}). This is an upper bound, partly inflated by lucky answers; a realistic "
+                "router is the next step.\n")
         glance = [
             ("FLAP vs.\\ baselines", "FLAP $<$ Wanda-SP $<$ Mag-SP in perplexity at every ratio", "\\textbf{positive}"),
+            *calrow,
             ("Light pruning (10\\%)", f"perplexity {c['ppl0']:.2f} $\\to$ {c['ppl10']:.2f}", "\\textbf{positive}"),
             ("GPU energy / memory (50\\%)", f"$-${(1 - c['e5'] / c['e0']) * 100:.0f}\\% J/token; "
              f"{c['m0']:.2f} $\\to$ {c['m5']:.2f}\\,GB", "\\textbf{positive}"),
@@ -506,8 +634,9 @@ def conclusion(src) -> str:
             ("GPU decode", f"{c['dec_lo']:.1f}--{c['dec_hi']:.1f}\\,ms/token at every ratio", "negative"),
             ("Accuracy (macro)", f"{c['macro']['v0']:.1f}\\% $\\to$ {c['macro']['flap_0.20']:.1f} / "
              f"{c['macro']['flap_0.35']:.1f} / {c['macro']['flap_0.50']:.1f}\\% (20/35/50\\%)", "negative"),
-            ("Routing headroom", f"$+${c['inf'] - c['best']:.1f} pts (informative oracle; naive "
+            ("Routing headroom, original ladder", f"$+${c['inf'] - c['best']:.1f} pts (informative oracle; naive "
              f"$+${c['oracle'] - c['best']:.1f})", "small positive"),
+            *ladrow,
             ("Query-level cascade", f"costs {casc_cost} the unpruned model on the T4", "negative"),
             ("Laptop-CPU latency", "not reliable enough to report", "pending"),
         ]
@@ -524,6 +653,7 @@ def conclusion(src) -> str:
             "parameters and larger. "
             f"Light pruning is cheap in quality: FLAP-10\\% moves WikiText-2 perplexity only from {c['ppl0']:.2f} to "
             f"{c['ppl10']:.2f}.\n"
+            + cal_item + lad_item +
             "\\item \\emph{Pruning gives measurable resource savings on the GPU.} At 50\\%, energy per generated token "
             f"falls by {(1 - c['e5'] / c['e0']) * 100:.0f}\\% ({c['e0']:.2f} to {c['e5']:.2f}\\,J), peak memory from "
             f"{c['m0']:.2f} to {c['m5']:.2f}\\,GB, and prefill latency by {c['pre512'] * 100:.0f}\\% (512 tokens) and "
@@ -557,9 +687,12 @@ def conclusion(src) -> str:
             "\\item Laptop-CPU timings were not reliable enough to report (Section~\\ref{sec:results}).\n"
             "\\end{itemize}\n"
             "\\paragraph{What is next.}\n\\begin{itemize}\n"
-            "\\item \\emph{Better cheap variants:} FLAP calibrated on in-domain questions from the train split (no answers) "
-            "and milder ratios (10--30\\%), to test whether the pruned variants stay above the constant-answer baseline "
-            "on more tasks.\n"
+            + ("\\item \\emph{Build on the calibration fix:} extend in-domain calibration to 30\\% and 50\\%, run the "
+               "train/validation splits for the chosen ladder, and test a short LoRA recovery where collapse persists "
+               "(35\\% and above).\n" if cal else
+               "\\item \\emph{Better cheap variants:} FLAP calibrated on in-domain questions from the train split (no "
+               "answers) and milder ratios (10--30\\%), to test whether the pruned variants stay above the "
+               "constant-answer baseline on more tasks.\n") +
             "\\item \\emph{Cascade fix:} a token-level cascade (speculative decoding) in which a pruned, int8-quantised "
             "copy of the model drafts tokens and the unpruned model verifies several of them in one pass. Unlike the "
             "query-level cascade, no work is wasted on escalation, and with greedy decoding the output is identical to the "
@@ -602,7 +735,7 @@ def main() -> int:
     results = p0_section(src)
     s1, f1 = p1_section(src)
     s2, f2 = p2_section(src)
-    results += s1 + s2 + p6_section(src)
+    results += s1 + s2 + calib_section(src) + p6_section(src)
     (GEN / "results.tex").write_text(results, encoding="utf-8")
     (GEN / "abstract.tex").write_text(abstract(src), encoding="utf-8")
     (GEN / "conclusion.tex").write_text(conclusion(src), encoding="utf-8")
