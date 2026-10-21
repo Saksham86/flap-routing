@@ -1,0 +1,21 @@
+phase: p2
+run_name: outcomes
+seed: 2026
+require_gpu: true
+paths:
+  results_root: /content/drive/MyDrive/qacr/results
+pool:
+  path: data/p2/query_pool.parquet
+  splits:
+  - test
+  max_docs_per_task: null
+variant:
+  name: v0
+  kind: hf
+  path: HuggingFaceTB/SmolLM2-1.7B
+  dtype: float16
+lm_eval:
+  batch_size: 16
+  max_length: 2048
+  max_gen_toks: 256
+tasks: null

@@ -1,0 +1,9 @@
+2026-10-21 09:54:48 | INFO    | p2.outcomes | pool /content/flap-routing/data/p2/query_pool.parquet: 19242 rows; tasks=['arc_challenge', 'arc_easy', 'boolq', 'gsm8k', 'hellaswag', 'mmlu', 'piqa', 'winogrande'] splits=['test'] max_docs=None
+2026-10-21 09:54:54 | INFO    | p2.outcomes | loaded variant flap_0.50 (HuggingFaceTB/SmolLM2-1.7B) params={'total': 905926656, 'embedding': 100663296, 'non_embedding': 805263360}
+2026-10-21 09:55:06 | INFO    | p2.outcomes | [arc_challenge] evaluating 235 docs over 1 lm-eval task(s), 0-shot
+2026-10-21 09:55:18 | INFO    | p2.outcomes | [arc_challenge] n=235 accuracy=0.2851 (11.6s) aggregate checks passed
+2026-10-21 09:55:18 | INFO    | p2.outcomes | [arc_easy] evaluating 475 docs over 1 lm-eval task(s), 0-shot
+2026-10-21 09:55:33 | INFO    | p2.outcomes | [arc_easy] n=475 accuracy=0.3242 (14.9s) aggregate checks passed
+2026-10-21 09:55:33 | INFO    | p2.outcomes | [boolq] evaluating 654 docs over 1 lm-eval task(s), 0-shot
+2026-10-21 09:55:55 | INFO    | p2.outcomes | [boolq] n=654 accuracy=0.3700 (22.4s) aggregate checks passed
+2026-10-21 09:55:55 | INFO    | p2.outcomes | [gsm8k] evaluating 264 docs over 1 lm-eval task(s), 5-shot

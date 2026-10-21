@@ -1,0 +1,19 @@
+2026-10-21 10:51:57 | INFO    | p2.outcomes | pool /content/flap-routing/data/p2/query_pool.parquet: 19242 rows; tasks=['arc_challenge', 'arc_easy', 'boolq', 'gsm8k', 'hellaswag', 'mmlu', 'piqa', 'winogrande'] splits=['test'] max_docs=None
+2026-10-21 10:53:03 | INFO    | p2.outcomes | loaded variant v0 (HuggingFaceTB/SmolLM2-1.7B) params={'total': 1711376384, 'embedding': 100663296, 'non_embedding': 1610713088}
+2026-10-21 10:53:14 | INFO    | p2.outcomes | [arc_challenge] evaluating 235 docs over 1 lm-eval task(s), 0-shot
+2026-10-21 10:53:28 | INFO    | p2.outcomes | [arc_challenge] n=235 accuracy=0.5106 (13.9s) aggregate checks passed
+2026-10-21 10:53:28 | INFO    | p2.outcomes | [arc_easy] evaluating 475 docs over 1 lm-eval task(s), 0-shot
+2026-10-21 10:53:45 | INFO    | p2.outcomes | [arc_easy] n=475 accuracy=0.7811 (17.2s) aggregate checks passed
+2026-10-21 10:53:45 | INFO    | p2.outcomes | [boolq] evaluating 654 docs over 1 lm-eval task(s), 0-shot
+2026-10-21 10:54:13 | INFO    | p2.outcomes | [boolq] n=654 accuracy=0.7324 (27.4s) aggregate checks passed
+2026-10-21 10:54:13 | INFO    | p2.outcomes | [gsm8k] evaluating 264 docs over 1 lm-eval task(s), 5-shot
+2026-10-21 11:01:04 | INFO    | p2.outcomes | [gsm8k] n=264 accuracy=0.3182 (410.4s) aggregate checks passed
+2026-10-21 11:01:04 | INFO    | p2.outcomes | [hellaswag] evaluating 800 docs over 1 lm-eval task(s), 0-shot
+2026-10-21 11:02:25 | INFO    | p2.outcomes | [hellaswag] n=800 accuracy=0.7225 (80.8s) aggregate checks passed
+2026-10-21 11:02:25 | INFO    | p2.outcomes | [mmlu] evaluating 800 docs over 57 lm-eval task(s), 0-shot
+2026-10-21 11:04:09 | INFO    | p2.outcomes | [mmlu] n=800 accuracy=0.4637 (103.9s) aggregate checks passed
+2026-10-21 11:04:09 | INFO    | p2.outcomes | [piqa] evaluating 367 docs over 1 lm-eval task(s), 0-shot
+2026-10-21 11:04:22 | INFO    | p2.outcomes | [piqa] n=367 accuracy=0.8120 (12.5s) aggregate checks passed
+2026-10-21 11:04:22 | INFO    | p2.outcomes | [winogrande] evaluating 254 docs over 1 lm-eval task(s), 0-shot
+2026-10-21 11:04:31 | INFO    | p2.outcomes | [winogrande] n=254 accuracy=0.6614 (8.3s) aggregate checks passed
+2026-10-21 11:04:31 | INFO    | p2.outcomes | done: {'variant': 'v0', 'n': 3849, 'per_task': {'arc_challenge': {'n': 235, 'accuracy': 0.5106382978723404}, 'arc_easy': {'n': 475, 'accuracy': 0.7810526315789473}, 'boolq': {'n': 654, 'accuracy': 0.7324159021406728}, 'gsm8k': {'n': 264, 'accuracy': 0.3181818181818182}, 'hellaswag': {'n': 800, 'accuracy': 0.7225}, 'mmlu': {'n': 800, 'accuracy': 0.46375}, 'piqa': {'n': 367, 'accuracy': 0.8119891008174387}, 'winogrande': {'n': 254, 'accuracy': 0.6614173228346457}}, 'macro_accuracy': 0.6252431341782329}

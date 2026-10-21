@@ -1,0 +1,21 @@
+{
+  "task": "gsm8k",
+  "n": 264,
+  "accuracy": 0.011363636363636364,
+  "elapsed_s": 247.0969118750004,
+  "peak_mem_gb": 5.465829372406006,
+  "aggregate_checks": [
+    {
+      "lm_task": "gsm8k",
+      "metric": "exact_match,flexible-extract",
+      "ours": 0.011363636363636364,
+      "lm_eval": 0.011363636363636364
+    }
+  ],
+  "n_truncation_risk": 0,
+  "context_budget_tokens": 1792,
+  "max_ctx_tokens": 1471,
+  "num_fewshot": 5,
+  "metric": "exact_match",
+  "gen_filter": "flexible-extract"
+}

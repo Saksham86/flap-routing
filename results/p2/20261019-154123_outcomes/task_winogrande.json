@@ -1,0 +1,21 @@
+{
+  "task": "winogrande",
+  "n": 254,
+  "accuracy": 0.5748031496062992,
+  "elapsed_s": 8.930777501000193,
+  "peak_mem_gb": 2.7852511405944824,
+  "aggregate_checks": [
+    {
+      "lm_task": "winogrande",
+      "metric": "acc,none",
+      "ours": 0.5748031496062992,
+      "lm_eval": 0.5748031496062992
+    }
+  ],
+  "n_truncation_risk": 0,
+  "context_budget_tokens": 2048,
+  "max_ctx_tokens": 32,
+  "num_fewshot": 0,
+  "metric": "acc",
+  "gen_filter": null
+}

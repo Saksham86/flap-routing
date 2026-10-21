@@ -1,0 +1,15 @@
+{
+  "spec": {
+    "name": "flap_0.35",
+    "kind": "plan",
+    "path": "HuggingFaceTB/SmolLM2-1.7B",
+    "dtype": "float16",
+    "plan": "/content/drive/MyDrive/qacr/plans/flap_0.35.safetensors"
+  },
+  "params": {
+    "total": 1147953152,
+    "embedding": 100663296,
+    "non_embedding": 1047289856
+  },
+  "device": "cuda"
+}

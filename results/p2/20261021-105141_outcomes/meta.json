@@ -1,0 +1,23 @@
+{
+  "run_id": "20261021-105141_outcomes",
+  "phase": "p2",
+  "seed": 2026,
+  "started": "2026-10-21T10:51:41",
+  "argv": [
+    "scripts/p2_outcomes.py",
+    "--config",
+    "configs/p2_outcomes.yaml",
+    "--set",
+    "require_gpu=true",
+    "--set",
+    "pool.splits=[test]",
+    "--set",
+    "variant.name=v0"
+  ],
+  "git": {
+    "commit": "409e5877ade0948cc5d3cc1a9b0258fab541b3ae",
+    "dirty": false,
+    "dirty_files": []
+  },
+  "resumed": false
+}

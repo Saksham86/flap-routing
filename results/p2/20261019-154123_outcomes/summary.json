@@ -1,0 +1,39 @@
+{
+  "variant": "flap_0.20",
+  "n": 3849,
+  "per_task": {
+    "arc_challenge": {
+      "n": 235,
+      "accuracy": 0.33617021276595743
+    },
+    "arc_easy": {
+      "n": 475,
+      "accuracy": 0.6505263157894737
+    },
+    "boolq": {
+      "n": 654,
+      "accuracy": 0.6330275229357798
+    },
+    "gsm8k": {
+      "n": 264,
+      "accuracy": 0.030303030303030304
+    },
+    "hellaswag": {
+      "n": 800,
+      "accuracy": 0.565
+    },
+    "mmlu": {
+      "n": 800,
+      "accuracy": 0.2475
+    },
+    "piqa": {
+      "n": 367,
+      "accuracy": 0.7438692098092643
+    },
+    "winogrande": {
+      "n": 254,
+      "accuracy": 0.5748031496062992
+    }
+  },
+  "macro_accuracy": 0.4726499301512256
+}

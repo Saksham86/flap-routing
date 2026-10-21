@@ -1,0 +1,14 @@
+{
+  "spec": {
+    "name": "v0",
+    "kind": "hf",
+    "path": "HuggingFaceTB/SmolLM2-1.7B",
+    "dtype": "float16"
+  },
+  "params": {
+    "total": 1711376384,
+    "embedding": 100663296,
+    "non_embedding": 1610713088
+  },
+  "device": "cuda"
+}
