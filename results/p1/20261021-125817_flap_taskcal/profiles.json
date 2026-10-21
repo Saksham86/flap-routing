@@ -1,0 +1,202 @@
+{
+  "flaptask_0.10": {
+    "device": "cuda",
+    "prompt_lens": [
+      128,
+      512,
+      1024
+    ],
+    "gen_tokens": 64,
+    "warmup": 3,
+    "reps": 5,
+    "prefill": {
+      "128": {
+        "median_ms": 36.368526999922324,
+        "min_ms": 33.95773199986252,
+        "max_ms": 47.40380799989907
+      },
+      "512": {
+        "median_ms": 120.98918800006686,
+        "min_ms": 117.32117900010053,
+        "max_ms": 124.26000400000703
+      },
+      "1024": {
+        "median_ms": 242.13398200004121,
+        "min_ms": 241.47158899995702,
+        "max_ms": 243.99007700003494
+      }
+    },
+    "generate": {
+      "prompt_len": 128,
+      "median_ms": 1896.8385549999311,
+      "min_ms": 1875.3753769999548,
+      "max_ms": 1983.232887999975,
+      "decode_ms_per_tok": 29.531270285714427,
+      "tokens_per_s": 33.74035171907518
+    },
+    "energy": {
+      "available": true,
+      "duration_s": 9.60400493499992,
+      "counter_joules": 651.099,
+      "sampled_joules": 650.0280935110441,
+      "mean_power_w": 67.70594604408706,
+      "max_power_w": 89.365,
+      "n_samples": 389,
+      "notes": [],
+      "joules_per_generated_token": 2.0346843750000003
+    },
+    "peak_mem_gb": 6.185461044311523,
+    "weight_bytes": 3101040640,
+    "n_params": 1550520320
+  },
+  "flaptask_0.20": {
+    "device": "cuda",
+    "prompt_lens": [
+      128,
+      512,
+      1024
+    ],
+    "gen_tokens": 64,
+    "warmup": 3,
+    "reps": 5,
+    "prefill": {
+      "128": {
+        "median_ms": 34.64453199990203,
+        "min_ms": 34.141372000021875,
+        "max_ms": 34.97598000012658
+      },
+      "512": {
+        "median_ms": 112.42556900015188,
+        "min_ms": 111.10393900003146,
+        "max_ms": 113.95846999994319
+      },
+      "1024": {
+        "median_ms": 224.9221239999315,
+        "min_ms": 223.0942490000416,
+        "max_ms": 226.76120300002367
+      }
+    },
+    "generate": {
+      "prompt_len": 128,
+      "median_ms": 1891.702832999954,
+      "min_ms": 1833.6375960000169,
+      "max_ms": 1902.7657659999022,
+      "decode_ms_per_tok": 29.477115888889713,
+      "tokens_per_s": 33.83195229374674
+    },
+    "energy": {
+      "available": true,
+      "duration_s": 9.387896082999987,
+      "counter_joules": 631.328,
+      "sampled_joules": 635.365447822582,
+      "mean_power_w": 67.7135589784187,
+      "max_power_w": 85.834,
+      "n_samples": 385,
+      "notes": [],
+      "joules_per_generated_token": 1.9728999999999999
+    },
+    "peak_mem_gb": 5.894220352172852,
+    "weight_bytes": 2779000832,
+    "n_params": 1389500416
+  },
+  "flaptask_0.35": {
+    "device": "cuda",
+    "prompt_lens": [
+      128,
+      512,
+      1024
+    ],
+    "gen_tokens": 64,
+    "warmup": 3,
+    "reps": 5,
+    "prefill": {
+      "128": {
+        "median_ms": 30.193271999905846,
+        "min_ms": 28.329696999890075,
+        "max_ms": 30.462215999932596
+      },
+      "512": {
+        "median_ms": 94.70855099993969,
+        "min_ms": 90.50486299997829,
+        "max_ms": 98.05657800006884
+      },
+      "1024": {
+        "median_ms": 185.82795099996474,
+        "min_ms": 184.09768800006532,
+        "max_ms": 191.389240000035
+      }
+    },
+    "generate": {
+      "prompt_len": 128,
+      "median_ms": 1866.0018860000491,
+      "min_ms": 1856.3873079999667,
+      "max_ms": 1890.5110599998807,
+      "decode_ms_per_tok": 29.139819269843546,
+      "tokens_per_s": 34.29792889287482
+    },
+    "energy": {
+      "available": true,
+      "duration_s": 9.349901541000008,
+      "counter_joules": 626.565,
+      "sampled_joules": 625.9199442057824,
+      "mean_power_w": 67.00469964068125,
+      "max_power_w": 88.023,
+      "n_samples": 386,
+      "notes": [],
+      "joules_per_generated_token": 1.9580156250000003
+    },
+    "peak_mem_gb": 5.451349258422852,
+    "weight_bytes": 2295857152,
+    "n_params": 1147928576
+  },
+  "flaptask_0.50": {
+    "device": "cuda",
+    "prompt_lens": [
+      128,
+      512,
+      1024
+    ],
+    "gen_tokens": 64,
+    "warmup": 3,
+    "reps": 5,
+    "prefill": {
+      "128": {
+        "median_ms": 27.386155999920447,
+        "min_ms": 26.536235000094166,
+        "max_ms": 28.68283300017538
+      },
+      "512": {
+        "median_ms": 78.02178399992954,
+        "min_ms": 75.74887299983857,
+        "max_ms": 79.40883699984624
+      },
+      "1024": {
+        "median_ms": 149.19322700006887,
+        "min_ms": 147.70394299989675,
+        "max_ms": 155.12911299992993
+      }
+    },
+    "generate": {
+      "prompt_len": 128,
+      "median_ms": 1912.479790999896,
+      "min_ms": 1879.657601999952,
+      "max_ms": 1931.5821979998873,
+      "decode_ms_per_tok": 29.922121190475803,
+      "tokens_per_s": 33.464405899180285
+    },
+    "energy": {
+      "available": true,
+      "duration_s": 9.558739462999938,
+      "counter_joules": 560.643,
+      "sampled_joules": 564.5671555237527,
+      "mean_power_w": 59.08156364119551,
+      "max_power_w": 76.129,
+      "n_samples": 407,
+      "notes": [],
+      "joules_per_generated_token": 1.752009375
+    },
+    "peak_mem_gb": 5.001199722290039,
+    "weight_bytes": 1811628032,
+    "n_params": 905814016
+  }
+}

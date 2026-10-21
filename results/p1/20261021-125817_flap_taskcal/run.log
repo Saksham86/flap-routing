@@ -1,0 +1,15 @@
+2026-10-21 12:58:33 | INFO    | p1 | base HuggingFaceTB/SmolLM2-1.7B loaded on cuda (torch.float16)
+2026-10-21 12:58:58 | INFO    | p1 | calibration replaced by pool train-split questions: {'n_questions': 11542, 'n_tokens': 1323496, 'splits': ['train']}
+2026-10-21 12:58:58 | INFO    | p1 | wikitext2: 1024 calibration windows x 128 tokens; test 304986 tokens (25s)
+2026-10-21 12:59:01 | INFO    | p1 | flap scores: layer 1/24
+2026-10-21 12:59:11 | INFO    | p1 | flap scores: layer 7/24
+2026-10-21 12:59:20 | INFO    | p1 | flap scores: layer 13/24
+2026-10-21 12:59:30 | INFO    | p1 | flap scores: layer 19/24
+2026-10-21 12:59:38 | INFO    | p1 | flap scores: layer 24/24
+2026-10-21 12:59:38 | INFO    | p1 | FLAP scores computed in 40.0s
+2026-10-21 13:01:06 | INFO    | p1 | [flaptask_0.10] achieved=0.100 params=1.551B ppl=22.06 decode=29.53 ms/tok (88s)
+2026-10-21 13:02:29 | INFO    | p1 | [flaptask_0.20] achieved=0.200 params=1.390B ppl=39.72 decode=29.48 ms/tok (83s)
+2026-10-21 13:03:41 | INFO    | p1 | [flaptask_0.35] achieved=0.350 params=1.148B ppl=89.12 decode=29.14 ms/tok (71s)
+2026-10-21 13:04:43 | INFO    | p1 | [flaptask_0.50] achieved=0.500 params=0.906B ppl=426.43 decode=29.92 ms/tok (62s)
+2026-10-21 13:04:44 | INFO    | p1 | plans copied to /content/drive/MyDrive/qacr/plans
+2026-10-21 13:04:44 | INFO    | p1 | done: 4 rows

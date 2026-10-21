@@ -1,0 +1,36 @@
+phase: p1
+run_name: flap_taskcal
+seed: 0
+require_gpu: true
+paths:
+  results_root: /content/drive/MyDrive/qacr/results
+  plans_export: /content/drive/MyDrive/qacr/plans
+pool_path: data/p2/query_pool.parquet
+flap_tag: flaptask
+include_unpruned: false
+base:
+  path: HuggingFaceTB/SmolLM2-1.7B
+  dtype: float16
+calibration:
+  source: pool_train
+  nsamples: 1024
+  seqlen: 128
+  seed: 0
+ppl:
+  batch_size: 16
+flap_ratios:
+- 0.1
+- 0.2
+- 0.35
+- 0.5
+baselines:
+  methods: []
+  ratios: []
+profile:
+  prompt_lens:
+  - 128
+  - 512
+  - 1024
+  gen_tokens: 64
+  warmup: 3
+  reps: 5
