@@ -1,0 +1,15 @@
+{
+  "spec": {
+    "name": "flaptask_0.10",
+    "kind": "plan",
+    "path": "HuggingFaceTB/SmolLM2-1.7B",
+    "dtype": "float16",
+    "plan": "/content/drive/MyDrive/qacr/plans/flaptask_0.10.safetensors"
+  },
+  "params": {
+    "total": 1550520320,
+    "embedding": 100663296,
+    "non_embedding": 1449857024
+  },
+  "device": "cuda"
+}

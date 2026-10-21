@@ -1,0 +1,19 @@
+2026-10-21 14:05:49 | INFO    | p2.outcomes | pool /content/flap-routing/data/p2/query_pool.parquet: 19242 rows; tasks=['arc_challenge', 'arc_easy', 'boolq', 'gsm8k', 'hellaswag', 'mmlu', 'piqa', 'winogrande'] splits=['test'] max_docs=None
+2026-10-21 14:05:55 | INFO    | p2.outcomes | loaded variant flaptask_0.10 (HuggingFaceTB/SmolLM2-1.7B) params={'total': 1550520320, 'embedding': 100663296, 'non_embedding': 1449857024}
+2026-10-21 14:06:05 | INFO    | p2.outcomes | [arc_challenge] evaluating 235 docs over 1 lm-eval task(s), 0-shot
+2026-10-21 14:06:20 | INFO    | p2.outcomes | [arc_challenge] n=235 accuracy=0.4298 (14.9s) aggregate checks passed
+2026-10-21 14:06:20 | INFO    | p2.outcomes | [arc_easy] evaluating 475 docs over 1 lm-eval task(s), 0-shot
+2026-10-21 14:06:41 | INFO    | p2.outcomes | [arc_easy] n=475 accuracy=0.7453 (20.8s) aggregate checks passed
+2026-10-21 14:06:41 | INFO    | p2.outcomes | [boolq] evaluating 654 docs over 1 lm-eval task(s), 0-shot
+2026-10-21 14:07:13 | INFO    | p2.outcomes | [boolq] n=654 accuracy=0.6972 (32.2s) aggregate checks passed
+2026-10-21 14:07:13 | INFO    | p2.outcomes | [gsm8k] evaluating 264 docs over 1 lm-eval task(s), 5-shot
+2026-10-21 14:14:08 | INFO    | p2.outcomes | [gsm8k] n=264 accuracy=0.1288 (413.7s) aggregate checks passed
+2026-10-21 14:14:08 | INFO    | p2.outcomes | [hellaswag] evaluating 800 docs over 1 lm-eval task(s), 0-shot
+2026-10-21 14:15:24 | INFO    | p2.outcomes | [hellaswag] n=800 accuracy=0.6875 (76.0s) aggregate checks passed
+2026-10-21 14:15:24 | INFO    | p2.outcomes | [mmlu] evaluating 800 docs over 57 lm-eval task(s), 0-shot
+2026-10-21 14:17:38 | INFO    | p2.outcomes | [mmlu] n=800 accuracy=0.4300 (133.5s) aggregate checks passed
+2026-10-21 14:17:38 | INFO    | p2.outcomes | [piqa] evaluating 367 docs over 1 lm-eval task(s), 0-shot
+2026-10-21 14:17:52 | INFO    | p2.outcomes | [piqa] n=367 accuracy=0.7929 (14.1s) aggregate checks passed
+2026-10-21 14:17:52 | INFO    | p2.outcomes | [winogrande] evaluating 254 docs over 1 lm-eval task(s), 0-shot
+2026-10-21 14:18:02 | INFO    | p2.outcomes | [winogrande] n=254 accuracy=0.6102 (9.4s) aggregate checks passed
+2026-10-21 14:18:02 | INFO    | p2.outcomes | done: {'variant': 'flaptask_0.10', 'n': 3849, 'per_task': {'arc_challenge': {'n': 235, 'accuracy': 0.4297872340425532}, 'arc_easy': {'n': 475, 'accuracy': 0.7452631578947368}, 'boolq': {'n': 654, 'accuracy': 0.6972477064220184}, 'gsm8k': {'n': 264, 'accuracy': 0.12878787878787878}, 'hellaswag': {'n': 800, 'accuracy': 0.6875}, 'mmlu': {'n': 800, 'accuracy': 0.43}, 'piqa': {'n': 367, 'accuracy': 0.7929155313351499}, 'winogrande': {'n': 254, 'accuracy': 0.610236220472441}}, 'macro_accuracy': 0.5652172161193473}

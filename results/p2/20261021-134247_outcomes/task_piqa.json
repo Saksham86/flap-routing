@@ -1,0 +1,21 @@
+{
+  "task": "piqa",
+  "n": 367,
+  "accuracy": 0.7247956403269755,
+  "elapsed_s": 12.574904717999743,
+  "peak_mem_gb": 3.0808777809143066,
+  "aggregate_checks": [
+    {
+      "lm_task": "piqa",
+      "metric": "acc,none",
+      "ours": 0.7247956403269755,
+      "lm_eval": 0.7247956403269755
+    }
+  ],
+  "n_truncation_risk": 0,
+  "context_budget_tokens": 2048,
+  "max_ctx_tokens": 33,
+  "num_fewshot": 0,
+  "metric": "acc",
+  "gen_filter": null
+}

@@ -1,0 +1,21 @@
+{
+  "task": "boolq",
+  "n": 654,
+  "accuracy": 0.6834862385321101,
+  "elapsed_s": 27.45714850100012,
+  "peak_mem_gb": 5.869913101196289,
+  "aggregate_checks": [
+    {
+      "lm_task": "boolq",
+      "metric": "acc,none",
+      "ours": 0.6834862385321101,
+      "lm_eval": 0.6834862385321101
+    }
+  ],
+  "n_truncation_risk": 0,
+  "context_budget_tokens": 2048,
+  "max_ctx_tokens": 784,
+  "num_fewshot": 0,
+  "metric": "acc",
+  "gen_filter": null
+}

@@ -1,0 +1,21 @@
+{
+  "task": "arc_challenge",
+  "n": 235,
+  "accuracy": 0.5106382978723404,
+  "elapsed_s": 20.839104195999994,
+  "peak_mem_gb": 3.715914249420166,
+  "aggregate_checks": [
+    {
+      "lm_task": "arc_challenge",
+      "metric": "acc_norm,none",
+      "ours": 0.5106382978723404,
+      "lm_eval": 0.5106382978723404
+    }
+  ],
+  "n_truncation_risk": 0,
+  "context_budget_tokens": 2048,
+  "max_ctx_tokens": 95,
+  "num_fewshot": 0,
+  "metric": "acc_norm",
+  "gen_filter": null
+}

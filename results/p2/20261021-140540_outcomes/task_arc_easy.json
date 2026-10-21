@@ -1,0 +1,21 @@
+{
+  "task": "arc_easy",
+  "n": 475,
+  "accuracy": 0.7452631578947368,
+  "elapsed_s": 20.794052214999283,
+  "peak_mem_gb": 3.5162692070007324,
+  "aggregate_checks": [
+    {
+      "lm_task": "arc_easy",
+      "metric": "acc,none",
+      "ours": 0.7452631578947368,
+      "lm_eval": 0.7452631578947368
+    }
+  ],
+  "n_truncation_risk": 0,
+  "context_budget_tokens": 2048,
+  "max_ctx_tokens": 124,
+  "num_fewshot": 0,
+  "metric": "acc",
+  "gen_filter": null
+}

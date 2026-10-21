@@ -1,0 +1,21 @@
+{
+  "task": "hellaswag",
+  "n": 800,
+  "accuracy": 0.46,
+  "elapsed_s": 62.08091612200042,
+  "peak_mem_gb": 2.8614044189453125,
+  "aggregate_checks": [
+    {
+      "lm_task": "hellaswag",
+      "metric": "acc_norm,none",
+      "ours": 0.46,
+      "lm_eval": 0.46
+    }
+  ],
+  "n_truncation_risk": 0,
+  "context_budget_tokens": 2048,
+  "max_ctx_tokens": 99,
+  "num_fewshot": 0,
+  "metric": "acc_norm",
+  "gen_filter": null
+}
