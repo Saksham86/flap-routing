@@ -22,7 +22,7 @@
 \title{Query-Adaptive Compression-Level Routing for Edge LLM Inference\\[4pt]
 \large B.Tech Thesis --- Mid-Semester Report}
 \author{\AUTHOR\\ \small\texttt{\IDNO}\\[2pt] \normalsize Supervisor: \SUPERVISOR\\ BITS Pilani}
-\date{19 October 2026}
+\date{\today}
 
 \begin{document}
 \maketitle
@@ -173,7 +173,7 @@ Figure~\ref{fig:pipeline} shows the pipeline.
 
 \paragraph{Engineering for correctness.} Every script is seeded and config-driven and writes its
 configuration, git commit (with a dirty flag), library versions and logs next to its results. The code
-base has 52 automated tests. Problems found and fixed during the work, each now covered by a test, are
+base has 53 automated tests. Problems found and fixed during the work, each now covered by a test, are
 listed in Appendix~\ref{app:issues}.
 
 %=======================================================================================
@@ -252,7 +252,7 @@ calibration, 1024 windows of 128 tokens, seed 0; PPL with 128-token windows. Rat
 Baselines & Wanda-SP and Magnitude-SP at ratios 0.2, 0.35, 0.5 (uniform per layer; Wanda-SP calibrated on
 128 WikiText-2 windows instead of C4, so all methods see the same text). \\
 Latency protocol & Batch 1, random-token prompts of 128/512/1024 tokens (GPU) or 128/512 (CPU); 64 (GPU) or 32 (CPU)
-generated tokens with EOS suppressed; median over 10 (GPU) or 3 (CPU) repetitions after warm-up; CUDA-synchronised. \\
+generated tokens with EOS suppressed; median over 10 (GPU) or 5 (CPU) repetitions after warm-up; CUDA-synchronised; CPU runs require mains power. \\
 Seeds & Pool/splits 2026; FLAP calibration 0; lm-eval few-shot seed 2026 for every variant. \\
 \bottomrule
 \end{tabularx}
@@ -327,6 +327,8 @@ P7 & weeks 20--22 & Ablations and final thesis. \\
   output folder was counted; the git state is now read before the run folder is created.
   \item The official FLAP code hard-codes head dimension 128 and the head weight $512/3$ (LLaMA-7B values) and
   writes to bias tensors that bias-free models do not have; the port generalises all three.
+  \item CPU timings taken on battery power were throttled and inconsistent; they were discarded and profiling now
+  refuses to run on battery.
 \end{enumerate}
 
 \bibliographystyle{plainnat}

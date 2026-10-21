@@ -214,6 +214,12 @@ def p1_section(src) -> tuple[str, dict]:
               "latency per token, and GPU energy per generated token.}\\label{fig:t4}\n\\end{figure}\n\n"
               + analysis)
     cpu = cpu_profiles(src)
+    if not cpu:
+        s += (r"\paragraph{Laptop CPU (edge device).} \pend{a first set of CPU measurements was discarded because the "
+              r"laptop was running on battery with the CPU throttled (about 55\% performance, about 1.97\,GHz); "
+              r"repetition spreads reached 2$\times$ and the variants were non-monotonic in size. Those runs are kept in "
+              r"the repository marked INVALID. The re-measurement on mains power, with the power state recorded per "
+              r"variant, is pending.}" + "\n\n")
     if cpu:
         body = []
         for name, r in cpu.items():
@@ -260,6 +266,62 @@ def p2_section(src) -> tuple[str, dict]:
     return s, facts
 
 
+def _p1_numbers(src) -> dict | None:
+    if not src.get("p1_sweep_dir"):
+        return None
+    d = REPO / src["p1_sweep_dir"]
+    by = {(r["method"], round(float(r["ratio"]), 2)): r for r in read_csv(d / "sweep.csv") if r["status"] == "ok"}
+    prof = json.loads((d / "profiles.json").read_text(encoding="utf-8"))
+    p0, p5 = prof["none_0.00"], prof["flap_0.50"]
+    return {
+        "ppl0": float(by[("none", 0.0)]["ppl_wikitext2"]), "ppl20": float(by[("flap", 0.2)]["ppl_wikitext2"]),
+        "ppl50": float(by[("flap", 0.5)]["ppl_wikitext2"]), "wanda50": float(by[("wanda_sp", 0.5)]["ppl_wikitext2"]),
+        "pre1024_cut": 1 - p5["prefill"]["1024"]["median_ms"] / p0["prefill"]["1024"]["median_ms"],
+        "energy_cut": 1 - p5["energy"]["joules_per_generated_token"] / p0["energy"]["joules_per_generated_token"],
+        "dec_lo": min(p["generate"]["decode_ms_per_tok"] for k, p in prof.items() if k.startswith(("flap", "none"))),
+        "dec_hi": max(p["generate"]["decode_ms_per_tok"] for k, p in prof.items() if k.startswith(("flap", "none"))),
+    }
+
+
+def abstract(src) -> str:
+    m = load_json(src["pool_manifest"])
+    n = _p1_numbers(src)
+    s = ("We study whether choosing an LLM's compression level per query pays off on edge hardware. We port FLAP, a "
+         "retraining-free structured pruning method, to SmolLM2-1.7B and obtain a ladder of nested pruned variants of "
+         "one model, stored as small pruning plans over a single copy of the weights. We build a "
+         f"{fmt_int(m['n_total'])}-question pool from eight benchmarks with reproducible splits and a scoring pipeline "
+         "that checks every result against the evaluation harness. ")
+    if n:
+        s += (f"On a Tesla T4, FLAP raises WikiText-2 perplexity from {n['ppl0']:.2f} to {n['ppl20']:.2f} at 20\\% and "
+              f"{n['ppl50']:.2f} at 50\\% of prunable parameters removed (Wanda-SP: {n['wanda50']:.2f} at 50\\%; Magnitude-SP "
+              "fails), reproducing the FLAP paper's method ranking at this scale. Pruning 50\\% cuts 1024-token prefill "
+              f"latency by {n['pre1024_cut'] * 100:.0f}\\% and energy per generated token by {n['energy_cut'] * 100:.0f}\\%, "
+              f"but batch-1 decode latency stays at {n['dec_lo']:.1f}--{n['dec_hi']:.1f}\\,ms per token for every ratio. ")
+    if src.get("p2_analysis_dir"):
+        s += "We report per-variant accuracy and the oracle headroom available to a per-query router. "
+    else:
+        s += ("Per-variant accuracy on the query pool, the oracle headroom available to a router, and laptop-CPU "
+              "latencies are being measured and are reported as pending. ")
+    return s + "\n"
+
+
+def conclusion(src) -> str:
+    n = _p1_numbers(src)
+    s = ("The infrastructure for the study is in place and verified: a seeded, config-driven pipeline with recorded "
+         "provenance, a faithful and tested port of FLAP and two baselines, a reproducible 19{,}242-question pool, and a "
+         "scoring pipeline whose every result is cross-checked against lm-eval. ")
+    if n:
+        s += ("The first measurements answer RQ1: FLAP produces a steep accuracy--cost ladder on a 1.7\\,B model "
+              f"(perplexity $\\times${n['ppl20'] / n['ppl0']:.2f} at 20\\%, $\\times${n['ppl50'] / n['ppl0']:.2f} at 50\\%) and "
+              "keeps its advantage over Wanda-SP and Magnitude-SP. They also show that on a T4 at batch size 1 width pruning "
+              "reduces prefill latency, energy and memory but not decode latency, so the cost model used for routing must "
+              "be measured per device rather than assumed proportional to parameter count. ")
+    s += ("Whether routing pays off (RQ2) depends on the oracle headroom, which the outcome runs now in progress will "
+          "measure; the analysis separates genuine complementarity between variants from lucky guesses by comparing "
+          "with independence and chance references. The remaining phases are planned as follows.\n")
+    return s
+
+
 def main() -> int:
     src = yaml.safe_load((MID / "sources.yaml").read_text(encoding="utf-8"))
     GEN.mkdir(parents=True, exist_ok=True)
@@ -270,6 +332,8 @@ def main() -> int:
     s2, f2 = p2_section(src)
     results += s1 + s2
     (GEN / "results.tex").write_text(results, encoding="utf-8")
+    (GEN / "abstract.tex").write_text(abstract(src), encoding="utf-8")
+    (GEN / "conclusion.tex").write_text(conclusion(src), encoding="utf-8")
     facts = {"p1": f1, "p2": f2}
     (GEN / "facts.json").write_text(json.dumps(facts, indent=1, default=str), encoding="utf-8")
     print("wrote", sorted(p.name for p in GEN.iterdir()))
