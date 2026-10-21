@@ -443,61 +443,119 @@ We therefore also report an **informative oracle**: on each task, a variant may 
 - **24.2%** of test questions are answered correctly by no variant.
 - **Answer to RQ2 (on the T4):** with FLAP at 20–50% on this 1.7 B model, per-query compression routing has little to gain. The pruned variants either collapse on a task or cost about the same per multiple-choice question, and they cost more on generation. Whether this changes under an edge-CPU cost model, and at milder ratios (10–20%), is the next question (Section 11).
 
+### 9.4 Query-level confidence cascade (offline)
+
+**How it works.** A cheap variant answers each multiple-choice question first. Its answer is kept if its confidence (the probability of its chosen option) is at least τ; otherwise the question is escalated to the unpruned model.
+
+**How it was evaluated.**
+- The test questions are split into two fixed halves.
+- τ is chosen on one half: the largest share of questions served by the cheap variant within an accuracy-loss budget.
+- All numbers below are measured on the other half.
+- Escalated questions pay for both models. So the cascade is cheaper than the unpruned model only if the share served exceeds the cheap variant's cost ratio.
+
+| Cheap variant | Loss budget (pts) | Served (%) | Accuracy loss, pts (95% CI) | Cost vs. unpruned (T4) | Cost vs. unpruned (param. ratio) |
+|---|---:|---:|---|---:|---:|
+| FLAP 20% | 0.0 | 2.8 | 0.00 (0.00–0.00) | 2.03× | 1.78× |
+| FLAP 20% | 0.5 | 19.8 | 0.72 (0.06–1.44) | 1.90× | 1.61× |
+| FLAP 20% | 1.0 | 22.3 | 0.89 (0.11–1.66) | 1.86× | 1.59× |
+| FLAP 35% | 0.0 | 1.1 | 0.06 (0.00–0.17) | 1.98× | 1.66× |
+| FLAP 35% | 0.5 | 6.4 | 0.55 (0.22–0.94) | 1.96× | 1.61× |
+| FLAP 35% | 1.0 | 10.3 | 1.28 (0.78–1.83) | 1.94× | 1.57× |
+| FLAP 50% | 0.0 | 1.3 | 0.06 (0.00–0.17) | 2.03× | 1.52× |
+| FLAP 50% | 0.5 | 3.7 | 0.50 (0.22–0.83) | 2.02× | 1.49× |
+| FLAP 50% | 1.0 | 6.5 | 1.22 (0.72–1.78) | 2.00× | 1.46× |
+
+*Table 10. Confidence cascade on the held-out half of the multiple-choice test questions.*
+- The T4 column uses the measured cost model.
+- The parameter-ratio column is a device-independent reference, not a measurement.
+
+**Result.**
+- **The pruned variants' confidence is informative.** At a 0.5-point budget, FLAP-20% answers 19.8% of the questions itself.
+- **But every configuration costs more than the unpruned model:** 1.86–2.03× on the T4. The share served stays far below the cheap variant's cost ratio.
+- **So a query-level cascade between these FLAP variants cannot save cost.** The planned fix is a token-level cascade (Section 11).
+
 ---
 
 ## 10. Conclusion
 
+### Key findings at a glance
+
+| Finding | Evidence | Outcome |
+|---|---|---|
+| FLAP vs. baselines | FLAP < Wanda-SP < Magnitude-SP in perplexity at every ratio tested | ✅ positive |
+| Light pruning (10%) | WikiText-2 perplexity 18.48 → 20.82 | ✅ positive |
+| GPU energy and memory (50%) | −27% energy per token; peak memory 6.48 → 5.00 GB | ✅ positive |
+| GPU prefill (50%) | −35% (512 tokens), −38% (1024 tokens) | ✅ positive |
+| Routing headroom | +1.9 pts with the informative oracle (naive oracle: +11.7) | ✅ small positive |
+| Overclaim prevented | informative oracle separates real headroom from constant-answer artifacts | ✅ positive (method) |
+| GPU decode latency | 30.4–31.1 ms/token at every ratio | ❌ negative |
+| Accuracy (macro) | 62.5% → 47.3 / 40.0 / 32.6% at 20 / 35 / 50% | ❌ negative |
+| Query-level cascade | costs 1.86–2.03× the unpruned model on the T4 | ❌ negative |
+| Laptop-CPU latency | not reliable enough to report | ⏳ pending |
+
 ### What worked
 
-- **FLAP reproduces on a small edge model.**
-  - On SmolLM2-1.7B, the perplexity ranking FLAP < Wanda-SP < Magnitude-SP holds at every ratio tested. The FLAP paper reports the same ranking for LLaMA models of 7 B parameters and larger.
-  - Light pruning is cheap in quality: FLAP-10% moves WikiText-2 perplexity only from 18.48 to 20.82.
-- **Pruning gives measurable resource savings on the GPU.** At 50% pruning:
-  - energy per generated token falls by 27% (2.09 J → 1.52 J);
-  - peak memory falls from 6.48 GB to 5.00 GB;
-  - prefill latency falls by 35% (512 tokens) and 38% (1024 tokens).
-- **Per-query routing has real, if small, headroom.**
-  - Even after excluding every variant that does not beat a constant answer, the oracle exceeds the best fixed variant by 1.9 points (64.1% → 66.1%) at the same cost.
-  - The gains come from PIQA (+5.2), ARC-Easy (+4.6), GSM8K (+4.2) and HellaSwag (+2.8).
-  - On PIQA, FLAP-50% keeps 60.8% accuracy (constant answer: 50.1%) with 47% fewer parameters.
-- **A method that prevents an overclaim.**
-  - The plain oracle would suggest a routing gain of 11.7 points, but most of it comes from variants that answer every question identically.
-  - The informative oracle introduced here measures the gain a router could actually exploit.
-- **Reliable infrastructure.**
-  - Results are identical question by question across runs on different days.
-  - Every result is cross-checked against lm-eval.
-  - Several silent errors that would have corrupted the results were found and fixed (Appendix A).
+1. **FLAP reproduces on a small edge model.**
+   - On SmolLM2-1.7B, FLAP beats Wanda-SP and Magnitude-SP at every ratio tested. The FLAP paper reports the same ranking for LLaMA models of 7 B parameters and larger.
+   - Light pruning is almost free in quality: FLAP-10% moves perplexity only from 18.48 to 20.82.
+2. **Pruning saves energy, memory and prompt-processing time on the GPU.** At 50% pruning:
+   - energy per generated token falls by **27%** (2.09 → 1.52 J);
+   - peak memory falls from **6.48 to 5.00 GB**;
+   - prefill latency falls by **35–38%**.
+3. **Per-query routing has real, if small, headroom.**
+   - After excluding every variant that does not beat a constant answer, the oracle still exceeds the best fixed variant by **+1.9 points** (64.1% → 66.1%) at the same cost.
+   - The gains come from PIQA (+5.2), ARC-Easy (+4.6), GSM8K (+4.2) and HellaSwag (+2.8).
+   - On PIQA, FLAP-50% keeps 60.8% accuracy (constant answer: 50.1%) with **47% fewer parameters**.
+4. **A method that prevents an overclaim.**
+   - A naive oracle suggests +11.7 points of routing gain.
+   - The *informative oracle* shows that most of it comes from variants that always give the same answer, and measures the gain a router could actually use.
+5. **The pruned model's confidence is a usable signal.** At a 0.5-point budget, FLAP-20% can answer about 1 in 5 multiple-choice questions on its own (Table 10).
+6. **Reliable, reproducible infrastructure.**
+   - Results are identical question by question across runs on different days.
+   - Every result is cross-checked against lm-eval.
+   - Several silent errors were found and fixed (Appendix A).
 
 ### What did not work
 
-- **Accuracy falls steeply.**
-  - Macro accuracy goes from 62.5% (unpruned) to 47.3% (20%), 40.0% (35%) and 32.6% (50%).
-  - On MMLU, the most frequent answer covers 100% of questions for both FLAP-35% and FLAP-50% (unpruned: 32%).
-  - On GSM8K, the pruned variants reach the 256-token limit on 80–100% of questions.
-- **No latency saving on the T4.**
-  - At batch size 1, decode latency stays at 30.4–31.1 ms per token for every ratio, so pruning does not shorten generation there.
-  - Multiple-choice costs are similar across variants and GSM8K outputs get longer, so per-query routing saves no latency on this GPU.
-- **No laptop-CPU timings.** They were not reliable enough to report (Section 9.2).
+1. **Accuracy falls steeply beyond 20%.**
+   - Macro accuracy goes from 62.5% to 47.3 / 40.0 / 32.6%.
+   - On MMLU, FLAP-35% and FLAP-50% give the same answer to every question.
+   - On GSM8K, the pruned variants reach the 256-token limit on 80–100% of questions.
+2. **No generation speed-up on the T4.** Decode latency is 30.4–31.1 ms/token at every ratio, so routing saves no latency on this GPU.
+3. **The query-level cascade costs more, not less (1.86–2.03×).** Escalated questions pay for both models, and the share the cheap variant answers stays below its cost ratio.
+4. **No trustworthy laptop-CPU timings yet** (Section 9.2).
 
-### What is next
+### What is next: the fix for the lack of improvement
 
-The results point to concrete steps:
-- Evaluate milder ratios (10–30%) to test whether the pruned variants stay above the constant-answer baseline on more tasks.
-- Remove the per-token overhead on the GPU with a static KV cache and CUDA graphs.
-- Use int8 weights on the CPU. Both speed-ups are implemented and unit-tested but not yet measured.
-- Take a controlled CPU measurement.
+The diagnosis points to three concrete fixes:
 
-## 11. Plan for the Remaining Work
+1. **Better cheap variants.**
+   - Calibrate FLAP on in-domain questions from the train split (questions only, never the answers) instead of Wikipedia text.
+   - Evaluate milder ratios (10–30%).
+   - Aim: stop the constant-answer collapse, so the cheap tier is both cheaper and still useful.
+2. **Cascade fix: a token-level cascade (speculative decoding).**
+   - A pruned, int8-quantised copy of the model drafts several tokens.
+   - The unpruned model verifies all of them in one forward pass and keeps the ones it agrees with.
+   - Unlike the query-level cascade, no work is wasted on escalation.
+   - With greedy decoding the output is **identical to the unpruned model's by construction**, so there is no accuracy loss. Any speed-up is pure gain.
+   - It suits the edge CPU, where reading the weights dominates the cost.
+3. **Faster execution.**
+   - Static KV cache with CUDA graphs on the GPU, to remove the per-token overhead.
+   - int8 weights on the CPU.
+   - A drift-robust, paired timing protocol for the laptop.
+   - These are implemented and unit-tested, but not yet measured.
 
-| Phase | Weeks | Work |
-|---|---|---|
-| P1 | next 2 weeks | Revisit the variant set given the collapse at ≥35% (add FLAP 10% and 30%). Faster execution: static KV cache + CUDA graphs on the T4, int8 weights and P-core thread pinning on the laptop CPU (code implemented and unit-tested, not yet measured). CPU latency in a dedicated idle measurement window. |
-| P2 | next 2 weeks | Outcome runs on train/validation for the chosen variants; headroom under the CPU cost model; decision gate. |
-| P3 | weeks 8–10 | Routers (rule, kNN, LR, MLP; task-type and RouterBench-trained baselines); calibration; offline replay. |
-| P4 | weeks 11–14 | Shared-weight runtime; `Pipeline.run`; live validation of replay and cost model on T4 and laptop CPU. |
-| P5 | weeks 15–18 | Accuracy–cost curves, iso-accuracy savings, deployment modes under a memory budget, bootstrap CIs. |
-| P6 | weeks 19–20 | (Optional) confidence-based cascade as a RAP-style comparison. |
-| P7 | weeks 20–22 | Ablations and final thesis. |
+## 11. Plan for the Remaining Work (until 5 December 2026)
+
+| Dates (2026) | Work package | Tasks | Deliverable |
+|---|---|---|---|
+| **22 – 28 Oct** | Better cheap variants | In-domain-calibrated FLAP and FLAP-10%: outcome runs on the test split; compare with the WikiText-calibrated variants (accuracy, collapse, informative oracle). | Variant set for the rest of the thesis |
+| **29 Oct – 4 Nov** | **Cascade fix** | Token-level cascade (speculative decoding) with pruned + int8 drafts; sweep draft ratio (10–50%), draft length (3–8 tokens) and the draft's confidence stop; paired timing on the laptop CPU and the T4; verify output identical to the unpruned model. | Speed-up with 95% CI at identical output |
+| **5 – 11 Nov** | Faster execution | Static KV cache + CUDA graphs on the T4; int8 + P-core thread pinning on the CPU; controlled CPU latency measurement; optional short LoRA recovery if accuracy is still too low. | Measured cost model per device |
+| **12 – 18 Nov** | Routers | Outcome runs on train/validation; rule-based, kNN, logistic-regression and MLP routers; task-type and RouterBench-trained baselines; offline replay against the informative oracle. | Accuracy–cost curves |
+| **19 – 25 Nov** | Pipeline and evaluation | Shared-weight runtime and `Pipeline.run` combining the router with the token-level cascade; live validation on the T4 and the laptop CPU; iso-accuracy savings, memory-budget scenario, bootstrap CIs. | Final result tables and figures |
+| **26 Nov – 2 Dec** | Ablations and writing | Calibration source, ratio set, draft length, int8 on/off; write all chapters from the generated tables. | Complete thesis draft |
+| **3 – 5 Dec** | Buffer and submission | Proof-reading; regenerate every table and figure from the result files. | **Final submission, 5 December** |
 
 ---
 

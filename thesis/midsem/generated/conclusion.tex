@@ -1,3 +1,22 @@
+\begin{table}[h]\centering\small
+\begin{tabularx}{\linewidth}{lXl}
+\toprule
+Finding & Evidence & Outcome \\
+\midrule
+FLAP vs.\ baselines & FLAP $<$ Wanda-SP $<$ Mag-SP in perplexity at every ratio & \textbf{positive} \\
+Light pruning (10\%) & perplexity 18.48 $\to$ 20.82 & \textbf{positive} \\
+GPU energy / memory (50\%) & $-$27\% J/token; 6.48 $\to$ 5.00\,GB & \textbf{positive} \\
+GPU prefill (50\%) & $-$35\% (512 tok), $-$38\% (1024 tok) & \textbf{positive} \\
+GPU decode & 30.4--31.1\,ms/token at every ratio & negative \\
+Accuracy (macro) & 62.5\% $\to$ 47.3 / 40.0 / 32.6\% (20/35/50\%) & negative \\
+Routing headroom & $+$1.9 pts (informative oracle; naive $+$11.7) & small positive \\
+Query-level cascade & costs 1.86--2.03$\times$ the unpruned model on the T4 & negative \\
+Laptop-CPU latency & not reliable enough to report & pending \\
+\bottomrule
+\end{tabularx}
+\caption{Key findings at a glance.}\label{tab:glance}
+\end{table}
+
 \paragraph{What worked.}
 \begin{itemize}
 \item \emph{FLAP reproduces on a small edge model.} On SmolLM2-1.7B the ranking FLAP $<$ Wanda-SP $<$ Magnitude-SP in perplexity holds at every ratio tested, as the FLAP paper reports for LLaMA models of 7\,B parameters and larger. Light pruning is cheap in quality: FLAP-10\% moves WikiText-2 perplexity only from 18.48 to 20.82.
@@ -10,6 +29,13 @@
 \begin{itemize}
 \item Accuracy falls steeply: macro accuracy 62.5\% (unpruned) to 47.3\% (20\%), 40.0\% (35\%) and 32.6\% (50\%). The most frequent MMLU answer covers 100\% of questions for FLAP-35\% and 100\% for FLAP-50\% (unpruned: 32\%), and on GSM8K the pruned variants reach the 256-token limit on 80--100\% of questions.
 \item On the T4 at batch size 1, decode latency stays at 30.4--31.1\,ms per token for every ratio, so pruning does not shorten generation there; with similar multiple-choice costs and longer GSM8K outputs, per-query routing saves no latency on this GPU.
+\item A query-level confidence cascade costs 1.86--2.03$\times$ the unpruned model on the T4: escalated questions pay for both models, and the share the cheap variant can answer stays below its cost ratio (Table~\ref{tab:cascade}).
 \item Laptop-CPU timings were not reliable enough to report (Section~\ref{sec:results}).
 \end{itemize}
-\paragraph{What is next.} The results point to concrete steps: evaluating milder ratios (10--30\%) to test whether the pruned variants stay above the constant-answer baseline on more tasks; removing the per-token overhead on the GPU (static KV cache with CUDA graphs) and int8 weights on the CPU, both implemented and unit-tested but not yet measured; and a controlled CPU measurement. The remaining phases are planned as follows.
+\paragraph{What is next.}
+\begin{itemize}
+\item \emph{Better cheap variants:} FLAP calibrated on in-domain questions from the train split (no answers) and milder ratios (10--30\%), to test whether the pruned variants stay above the constant-answer baseline on more tasks.
+\item \emph{Cascade fix:} a token-level cascade (speculative decoding) in which a pruned, int8-quantised copy of the model drafts tokens and the unpruned model verifies several of them in one pass. Unlike the query-level cascade, no work is wasted on escalation, and with greedy decoding the output is identical to the unpruned model's by construction.
+\item \emph{Faster execution:} static KV cache with CUDA graphs on the GPU and int8 weights on the CPU (implemented and unit-tested, not yet measured), and a drift-robust CPU measurement protocol.
+\end{itemize}
+The timeline to the final submission (5 December 2026) is given below.

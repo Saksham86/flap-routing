@@ -357,6 +357,39 @@ def p2_section(src) -> tuple[str, dict]:
     return s, facts
 
 
+def p6_section(src) -> str:
+    """Query-level confidence cascade (offline, held-out half), from results/p6/<run>/cascade.csv."""
+    if not src.get("p6_cascade_dir"):
+        return ""
+    rows = read_csv(REPO / src["p6_cascade_dir"] / "cascade.csv")
+    body = []
+    for r in rows:
+        body.append(f"{label(r['small'])} & {float(r['max_loss']) * 100:.1f} & {float(r['served']) * 100:.1f} & "
+                    f"{float(r['loss']) * 100:.2f} ({float(r['loss_ci_lo']) * 100:.2f}--{float(r['loss_ci_hi']) * 100:.2f}) & "
+                    f"{float(r['t4_cascade_cost']):.2f}$\\times$ & {float(r['param_cascade_cost']):.2f}$\\times$ \\\\")
+    half = [r for r in rows if abs(float(r["max_loss"]) - 0.005) < 1e-9]
+    best = max(half, key=lambda r: float(r["served"])) if half else rows[0]
+    return ("\\subsection{Query-level confidence cascade (offline)}\n"
+            "A cheap variant answers each multiple-choice question first; its answer is kept if its confidence (the "
+            "probability of its chosen option) is at least $\\tau$, otherwise the question is escalated to the unpruned "
+            "model. The test questions are split into two fixed halves: $\\tau$ is chosen on one half (largest share served "
+            "within an accuracy-loss budget) and all numbers are reported on the other half. Escalated questions pay for "
+            "both models, so the cascade is cheaper than the unpruned model only if the share served exceeds the cheap "
+            "model's cost ratio.\n\n"
+            "\\begin{table}[h]\\centering\\small\n\\begin{tabular}{lrrlrr}\n\\toprule\n"
+            "Cheap variant & Budget (pts) & Served (\\%) & Loss, pts (95\\% CI) & T4 cost & Param.-ratio cost \\\\\n"
+            "\\midrule\n" + "\n".join(body) + "\n\\bottomrule\n\\end{tabular}\n"
+            "\\caption{Confidence cascade on the held-out half of the multiple-choice test questions. Cost is relative to "
+            "the unpruned model alone (T4: measured cost model; parameter ratio: device-independent reference, not a "
+            "measurement).}\\label{tab:cascade}\n\\end{table}\n\n"
+            f"The pruned variants' confidence is informative --- at a 0.5-point budget {label(best['small'])} answers "
+            f"{float(best['served']) * 100:.1f}\\% of the questions itself --- but every configuration costs more than the "
+            f"unpruned model ({min(float(r['t4_cascade_cost']) for r in rows):.2f}--"
+            f"{max(float(r['t4_cascade_cost']) for r in rows):.2f}$\\times$ on the T4), because the share served stays far "
+            "below the cost ratio of the cheap variant. A query-level cascade between these FLAP variants cannot save cost; "
+            "the planned fix is a token-level cascade (Section~\\ref{sec:plan}).\n\n")
+
+
 def _p1_numbers(src) -> dict | None:
     if not src.get("p1_sweep_dir"):
         return None
@@ -460,7 +493,31 @@ def conclusion(src) -> str:
     if c:
         # +1e-9: exact halves (e.g. 75.00 - 72.25 = 2.75) must round up as in the tables, not down by float error
         gains = ", ".join(f"{TASK_NAMES[t]} $+${g + 1e-9:.1f}" for t, g in c["pos_gains"])
+        casc = read_csv(REPO / src["p6_cascade_dir"] / "cascade.csv") if src.get("p6_cascade_dir") else []
+        casc_cost = (f"{min(float(r['t4_cascade_cost']) for r in casc):.2f}--"
+                     f"{max(float(r['t4_cascade_cost']) for r in casc):.2f}$\\times$") if casc else "--"
+        glance = [
+            ("FLAP vs.\\ baselines", "FLAP $<$ Wanda-SP $<$ Mag-SP in perplexity at every ratio", "\\textbf{positive}"),
+            ("Light pruning (10\\%)", f"perplexity {c['ppl0']:.2f} $\\to$ {c['ppl10']:.2f}", "\\textbf{positive}"),
+            ("GPU energy / memory (50\\%)", f"$-${(1 - c['e5'] / c['e0']) * 100:.0f}\\% J/token; "
+             f"{c['m0']:.2f} $\\to$ {c['m5']:.2f}\\,GB", "\\textbf{positive}"),
+            ("GPU prefill (50\\%)", f"$-${c['pre512'] * 100:.0f}\\% (512 tok), $-${c['pre1024'] * 100:.0f}\\% (1024 tok)",
+             "\\textbf{positive}"),
+            ("GPU decode", f"{c['dec_lo']:.1f}--{c['dec_hi']:.1f}\\,ms/token at every ratio", "negative"),
+            ("Accuracy (macro)", f"{c['macro']['v0']:.1f}\\% $\\to$ {c['macro']['flap_0.20']:.1f} / "
+             f"{c['macro']['flap_0.35']:.1f} / {c['macro']['flap_0.50']:.1f}\\% (20/35/50\\%)", "negative"),
+            ("Routing headroom", f"$+${c['inf'] - c['best']:.1f} pts (informative oracle; naive "
+             f"$+${c['oracle'] - c['best']:.1f})", "small positive"),
+            ("Query-level cascade", f"costs {casc_cost} the unpruned model on the T4", "negative"),
+            ("Laptop-CPU latency", "not reliable enough to report", "pending"),
+        ]
+        table = ("\\begin{table}[h]\\centering\\small\n\\begin{tabularx}{\\linewidth}{lXl}\n\\toprule\n"
+                 "Finding & Evidence & Outcome \\\\\n\\midrule\n"
+                 + "\n".join(f"{a} & {b} & {o} \\\\" for a, b, o in glance)
+                 + "\n\\bottomrule\n\\end{tabularx}\n\\caption{Key findings at a glance.}\\label{tab:glance}\n"
+                 "\\end{table}\n\n")
         return (
+            table +
             "\\paragraph{What worked.}\n\\begin{itemize}\n"
             "\\item \\emph{FLAP reproduces on a small edge model.} On SmolLM2-1.7B the ranking FLAP $<$ Wanda-SP $<$ "
             "Magnitude-SP in perplexity holds at every ratio tested, as the FLAP paper reports for LLaMA models of 7\\,B "
@@ -494,13 +551,22 @@ def conclusion(src) -> str:
             f"\\item On the T4 at batch size 1, decode latency stays at {c['dec_lo']:.1f}--{c['dec_hi']:.1f}\\,ms per token "
             "for every ratio, so pruning does not shorten generation there; with similar multiple-choice costs and longer "
             "GSM8K outputs, per-query routing saves no latency on this GPU.\n"
+            + (f"\\item A query-level confidence cascade costs {casc_cost} the unpruned model on the T4: escalated "
+               "questions pay for both models, and the share the cheap variant can answer stays below its cost ratio "
+               "(Table~\\ref{tab:cascade}).\n" if casc else "") +
             "\\item Laptop-CPU timings were not reliable enough to report (Section~\\ref{sec:results}).\n"
             "\\end{itemize}\n"
-            "\\paragraph{What is next.} The results point to concrete steps: evaluating milder ratios (10--30\\%) to test "
-            "whether the pruned variants stay above the constant-answer baseline on more tasks; removing the per-token "
-            "overhead on the GPU "
-            "(static KV cache with CUDA graphs) and int8 weights on the CPU, both implemented and unit-tested but not yet "
-            "measured; and a controlled CPU measurement. The remaining phases are planned as follows.\n")
+            "\\paragraph{What is next.}\n\\begin{itemize}\n"
+            "\\item \\emph{Better cheap variants:} FLAP calibrated on in-domain questions from the train split (no answers) "
+            "and milder ratios (10--30\\%), to test whether the pruned variants stay above the constant-answer baseline "
+            "on more tasks.\n"
+            "\\item \\emph{Cascade fix:} a token-level cascade (speculative decoding) in which a pruned, int8-quantised "
+            "copy of the model drafts tokens and the unpruned model verifies several of them in one pass. Unlike the "
+            "query-level cascade, no work is wasted on escalation, and with greedy decoding the output is identical to the "
+            "unpruned model's by construction.\n"
+            "\\item \\emph{Faster execution:} static KV cache with CUDA graphs on the GPU and int8 weights on the CPU "
+            "(implemented and unit-tested, not yet measured), and a drift-robust CPU measurement protocol.\n"
+            "\\end{itemize}\nThe timeline to the final submission (5 December 2026) is given below.\n")
     n = _p1_numbers(src)
     s = ("The infrastructure for the study is in place and verified: a seeded, config-driven pipeline with recorded "
          "provenance, a faithful and tested port of FLAP and two baselines, a reproducible 19{,}242-question pool, and a "
@@ -536,7 +602,7 @@ def main() -> int:
     results = p0_section(src)
     s1, f1 = p1_section(src)
     s2, f2 = p2_section(src)
-    results += s1 + s2
+    results += s1 + s2 + p6_section(src)
     (GEN / "results.tex").write_text(results, encoding="utf-8")
     (GEN / "abstract.tex").write_text(abstract(src), encoding="utf-8")
     (GEN / "conclusion.tex").write_text(conclusion(src), encoding="utf-8")

@@ -294,20 +294,38 @@ match is stored too.
 
 \begin{table}[h]
 \centering\small
-\begin{tabular}{llp{9.2cm}}
+\begin{tabular}{p{2.6cm}p{2.3cm}p{9.6cm}}
 \toprule
-Phase & Weeks & Work \\
+Dates (2026) & Work package & Tasks and deliverable \\
 \midrule
-P1 & next 2 weeks & Revisit the variant set given the collapse at $\ge$35\% (add FLAP 10\%, 30\%); faster execution (static KV cache + CUDA graphs on the T4; int8 weights and P-core thread pinning on the laptop CPU; implemented and unit-tested, not yet measured); CPU latency in a dedicated idle window. \\
-P2 & next 2 weeks & Outcome runs on train/validation for the chosen variants; headroom under the CPU cost model; decision gate (Eq.~\ref{eq:headroom}). \\
-P3 & weeks 8--10 & Routers (rule, $k$NN, LR, MLP; task-type and RouterBench-trained baselines); calibration; offline replay. \\
-P4 & weeks 11--14 & Shared-weight runtime; \texttt{Pipeline.run}; live validation of replay and cost model on T4 and laptop CPU. \\
-P5 & weeks 15--18 & Accuracy--cost curves, iso-accuracy savings, deployment modes under a memory budget, bootstrap CIs. \\
-P6 & weeks 19--20 & (Optional) confidence-based cascade as a RAP-style comparison. \\
-P7 & weeks 20--22 & Ablations and final thesis. \\
+22 Oct -- 28 Oct & Better cheap variants &
+In-domain-calibrated FLAP (questions from the train split, no answers) and FLAP 10\%: outcome runs on the test split;
+compare with the WikiText-calibrated variants (accuracy, constant-answer collapse, informative oracle).
+\emph{Deliverable:} variant set for the rest of the thesis. \\
+29 Oct -- 4 Nov & Cascade fix &
+Token-level cascade (speculative decoding): pruned, int8 draft of the model, unpruned model verifies; greedy output
+must be identical to the unpruned model. Sweep draft ratio (10--50\%), draft length (3--8 tokens) and the draft's
+confidence stop; paired, drift-robust timing on the laptop CPU and on the T4.
+\emph{Deliverable:} speed-up with 95\% CI at identical output. \\
+5 Nov -- 11 Nov & Faster execution &
+Static KV cache + CUDA graphs on the T4; int8 weights and P-core thread pinning on the CPU; controlled CPU latency
+measurement in an idle window. Optional short LoRA recovery of the pruned variants if accuracy is still too low.
+\emph{Deliverable:} measured cost model per device. \\
+12 Nov -- 18 Nov & Routers &
+Outcome runs on train/validation; rule-based, $k$NN, logistic-regression and MLP routers on query-text features;
+task-type and RouterBench-trained baselines; offline replay against the informative oracle.
+\emph{Deliverable:} accuracy--cost curves on the test split. \\
+19 Nov -- 25 Nov & Pipeline and evaluation &
+Shared-weight runtime and \texttt{Pipeline.run} combining the router with the token-level cascade; live validation of
+the offline replay and cost model on the T4 and the laptop CPU; iso-accuracy savings, memory-budget scenario,
+bootstrap CIs. \emph{Deliverable:} final results tables and figures. \\
+26 Nov -- 2 Dec & Ablations and writing &
+Calibration source, ratio set, draft length, int8 on/off; write all thesis chapters from the generated tables. \\
+3 Dec -- 5 Dec & Buffer and submission &
+Proof-reading, final regeneration of every table and figure from \texttt{results/}, submission on 5 December. \\
 \bottomrule
 \end{tabular}
-\caption{Remaining work.}
+\caption{Remaining work until the final submission (5 December 2026).}
 \end{table}
 
 \appendix
