@@ -430,9 +430,8 @@ def conclusion(src) -> str:
               f"answer, the oracle reaches {p2['inf']:.1f}\\% and still sends {p2['inf_v0_share']:.1f}\\% of questions to "
               "the unpruned model. On the T4, where all variants cost about the same per multiple-choice question and "
               "the pruned variants generate longer GSM8K answers, per-query compression routing therefore has little to "
-              "gain. The planned next steps are to measure whether the laptop CPU, where pruning does shorten each step, "
-              "changes this, and to test less aggressive ratios (10--20\\%) where the pruned variants still beat a "
-              "constant answer on more tasks.\n")
+              "gain. The next steps are to measure whether the laptop-CPU cost model changes this, and to test whether "
+              "less aggressive ratios (10--20\\%) keep more tasks above the constant-answer baseline.\n")
     else:
         s += ("Whether routing pays off (RQ2) depends on the oracle headroom, which the outcome runs now in progress "
               "will measure; the analysis separates genuine complementarity between variants from lucky guesses by "
