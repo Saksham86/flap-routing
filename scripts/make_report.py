@@ -418,7 +418,89 @@ def abstract(src) -> str:
     return s + "\n"
 
 
+def conclusion_facts(src) -> dict | None:
+    """Every number used in the structured conclusion, read from the result files."""
+    if not (src.get("p1_sweep_dir") and src.get("p2_analysis_dir")):
+        return None
+    d1 = REPO / src["p1_sweep_dir"]
+    by = {(r["method"], round(float(r["ratio"]), 2)): r for r in read_csv(d1 / "sweep.csv") if r["status"] == "ok"}
+    prof = json.loads((d1 / "profiles.json").read_text(encoding="utf-8"))
+    p0, p5 = prof["none_0.00"], prof["flap_0.50"]
+    d2 = REPO / src["p2_analysis_dir"]
+    h = json.loads(sorted(d2.glob("headroom_*.json"))[0].read_text(encoding="utf-8"))
+    beh = json.loads((d2 / "behaviour.json").read_text(encoding="utf-8"))
+    acc = {r["task"]: r for r in read_csv(d2 / "accuracy_table.csv")}
+    io = h["informative_oracle"]["per_task"]
+    gains = {t: (io[t]["oracle_accuracy"] - h["per_task_headroom"][t]["best_static_accuracy"]) * 100 for t in io}
+    pos = sorted(((t, g) for t, g in gains.items() if g > 0.05), key=lambda x: -x[1])
+    n0, n5 = int(by[("none", 0.0)]["n_params"]), int(by[("flap", 0.5)]["n_params"])
+    return {
+        "ppl0": float(by[("none", 0.0)]["ppl_wikitext2"]), "ppl10": float(by[("flap", 0.1)]["ppl_wikitext2"]),
+        "ppl20": float(by[("flap", 0.2)]["ppl_wikitext2"]), "ppl50": float(by[("flap", 0.5)]["ppl_wikitext2"]),
+        "e0": p0["energy"]["joules_per_generated_token"], "e5": p5["energy"]["joules_per_generated_token"],
+        "m0": p0["peak_mem_gb"], "m5": p5["peak_mem_gb"],
+        "pre512": 1 - p5["prefill"]["512"]["median_ms"] / p0["prefill"]["512"]["median_ms"],
+        "pre1024": 1 - p5["prefill"]["1024"]["median_ms"] / p0["prefill"]["1024"]["median_ms"],
+        "dec_lo": min(prof[k]["generate"]["decode_ms_per_tok"] for k in prof if k.startswith(("none", "flap"))),
+        "dec_hi": max(prof[k]["generate"]["decode_ms_per_tok"] for k in prof if k.startswith(("none", "flap"))),
+        "best": h["best_fixed"]["accuracy"] * 100, "oracle": h["oracle"]["accuracy"] * 100,
+        "inf": h["informative_oracle"]["accuracy"] * 100, "inf_v0": h["informative_oracle"]["pick_share"]["v0"] * 100,
+        "pos_gains": pos, "piqa50": float(acc["piqa"]["flap_0.50"]) * 100,
+        "piqa_const": io["piqa"]["constant_baseline"] * 100, "fewer_params": (1 - n5 / n0) * 100,
+        "macro": {v: float(acc["macro_avg"][v]) * 100 for v in acc["macro_avg"] if v != "task"},
+        "gsm_cap": {v: x["share_at_cap"] * 100 for v, x in beh["gsm8k_generation"].items()},
+        "mmlu_const": {v: x["max_share"] * 100 for v, x in beh["mc_max_answer_share"]["mmlu"].items()},
+        "boolq_const": {v: x["max_share"] * 100 for v, x in beh["mc_max_answer_share"]["boolq"].items()},
+        "unsolvable": h["oracle"]["unsolvable_share"] * 100,
+    }
+
+
 def conclusion(src) -> str:
+    c = conclusion_facts(src)
+    if c:
+        # +1e-9: exact halves (e.g. 75.00 - 72.25 = 2.75) must round up as in the tables, not down by float error
+        gains = ", ".join(f"{TASK_NAMES[t]} $+${g + 1e-9:.1f}" for t, g in c["pos_gains"])
+        return (
+            "\\paragraph{What worked.}\n\\begin{itemize}\n"
+            "\\item \\emph{FLAP reproduces on a small edge model.} On SmolLM2-1.7B the ranking FLAP $<$ Wanda-SP $<$ "
+            "Magnitude-SP in perplexity holds at every ratio tested, as the FLAP paper reports for LLaMA models of 7\\,B "
+            "parameters and larger. "
+            f"Light pruning is cheap in quality: FLAP-10\\% moves WikiText-2 perplexity only from {c['ppl0']:.2f} to "
+            f"{c['ppl10']:.2f}.\n"
+            "\\item \\emph{Pruning gives measurable resource savings on the GPU.} At 50\\%, energy per generated token "
+            f"falls by {(1 - c['e5'] / c['e0']) * 100:.0f}\\% ({c['e0']:.2f} to {c['e5']:.2f}\\,J), peak memory from "
+            f"{c['m0']:.2f} to {c['m5']:.2f}\\,GB, and prefill latency by {c['pre512'] * 100:.0f}\\% (512 tokens) and "
+            f"{c['pre1024'] * 100:.0f}\\% (1024 tokens).\n"
+            "\\item \\emph{Per-query routing has real, if small, headroom.} After excluding every variant that does not "
+            f"beat a constant answer, the oracle still exceeds the best fixed variant by {c['inf'] - c['best']:.1f} points "
+            f"({c['best']:.1f}\\% to {c['inf']:.1f}\\%) at the same cost, with gains on {gains}. On PIQA, FLAP-50\\% keeps "
+            f"{c['piqa50']:.1f}\\% accuracy (constant answer: {c['piqa_const']:.1f}\\%) with {c['fewer_params']:.0f}\\% "
+            "fewer parameters.\n"
+            "\\item \\emph{A method that prevents an overclaim.} The plain oracle would suggest a routing gain of "
+            f"{c['oracle'] - c['best']:.1f} points; most of it comes from variants that answer every question identically. "
+            "The informative oracle introduced here measures the gain a router could actually exploit.\n"
+            "\\item \\emph{Reliable infrastructure.} Results are identical question by question across runs on different "
+            "days; every result is cross-checked against lm-eval; several silent errors that would have corrupted results "
+            "were found and fixed (Appendix~\\ref{app:issues}).\n"
+            "\\end{itemize}\n"
+            "\\paragraph{What did not work.}\n\\begin{itemize}\n"
+            f"\\item Accuracy falls steeply: macro accuracy {c['macro']['v0']:.1f}\\% (unpruned) to "
+            f"{c['macro']['flap_0.20']:.1f}\\% (20\\%), {c['macro']['flap_0.35']:.1f}\\% (35\\%) and "
+            f"{c['macro']['flap_0.50']:.1f}\\% (50\\%). The most frequent MMLU answer covers "
+            f"{c['mmlu_const']['flap_0.35']:.0f}\\% of questions for FLAP-35\\% and {c['mmlu_const']['flap_0.50']:.0f}\\% "
+            f"for FLAP-50\\% (unpruned: {c['mmlu_const']['v0']:.0f}\\%), and on GSM8K the pruned variants reach the "
+            "256-token limit on "
+            f"{c['gsm_cap']['flap_0.20']:.0f}--{c['gsm_cap']['flap_0.50']:.0f}\\% of questions.\n"
+            f"\\item On the T4 at batch size 1, decode latency stays at {c['dec_lo']:.1f}--{c['dec_hi']:.1f}\\,ms per token "
+            "for every ratio, so pruning does not shorten generation there; with similar multiple-choice costs and longer "
+            "GSM8K outputs, per-query routing saves no latency on this GPU.\n"
+            "\\item Laptop-CPU timings were not reliable enough to report (Section~\\ref{sec:results}).\n"
+            "\\end{itemize}\n"
+            "\\paragraph{What is next.} The results point to concrete steps: evaluating milder ratios (10--30\\%) to test "
+            "whether the pruned variants stay above the constant-answer baseline on more tasks; removing the per-token "
+            "overhead on the GPU "
+            "(static KV cache with CUDA graphs) and int8 weights on the CPU, both implemented and unit-tested but not yet "
+            "measured; and a controlled CPU measurement. The remaining phases are planned as follows.\n")
     n = _p1_numbers(src)
     s = ("The infrastructure for the study is in place and verified: a seeded, config-driven pipeline with recorded "
          "provenance, a faithful and tested port of FLAP and two baselines, a reproducible 19{,}242-question pool, and a "

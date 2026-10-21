@@ -447,21 +447,45 @@ We therefore also report an **informative oracle**: on each task, a variant may 
 
 ## 10. Conclusion
 
-**Infrastructure.** The infrastructure for the study is in place and verified:
-- a seeded, config-driven pipeline with recorded provenance;
-- a faithful and tested port of FLAP and two baselines;
-- a reproducible 19,242-question pool;
-- a scoring pipeline whose every result is cross-checked against lm-eval.
+### What worked
 
-**First measurements.**
-- **RQ1:** FLAP produces a steep accuracy–cost ladder on a 1.7 B model (perplexity ×1.40 at 20%, ×6.74 at 50%) and keeps its advantage over Wanda-SP and Magnitude-SP.
-- **T4 behaviour:** at batch size 1, width pruning reduces prefill latency, energy and memory, but not decode latency. So the cost model used for routing must be measured per device rather than assumed proportional to parameter count.
+- **FLAP reproduces on a small edge model.**
+  - On SmolLM2-1.7B, the perplexity ranking FLAP < Wanda-SP < Magnitude-SP holds at every ratio tested. The FLAP paper reports the same ranking for LLaMA models of 7 B parameters and larger.
+  - Light pruning is cheap in quality: FLAP-10% moves WikiText-2 perplexity only from 18.48 to 20.82.
+- **Pruning gives measurable resource savings on the GPU.** At 50% pruning:
+  - energy per generated token falls by 27% (2.09 J → 1.52 J);
+  - peak memory falls from 6.48 GB to 5.00 GB;
+  - prefill latency falls by 35% (512 tokens) and 38% (1024 tokens).
+- **Per-query routing has real, if small, headroom.**
+  - Even after excluding every variant that does not beat a constant answer, the oracle exceeds the best fixed variant by 1.9 points (64.1% → 66.1%) at the same cost.
+  - The gains come from PIQA (+5.2), ARC-Easy (+4.6), GSM8K (+4.2) and HellaSwag (+2.8).
+  - On PIQA, FLAP-50% keeps 60.8% accuracy (constant answer: 50.1%) with 47% fewer parameters.
+- **A method that prevents an overclaim.**
+  - The plain oracle would suggest a routing gain of 11.7 points, but most of it comes from variants that answer every question identically.
+  - The informative oracle introduced here measures the gain a router could actually exploit.
+- **Reliable infrastructure.**
+  - Results are identical question by question across runs on different days.
+  - Every result is cross-checked against lm-eval.
+  - Several silent errors that would have corrupted the results were found and fixed (Appendix A).
 
-**RQ2 on the GPU.** The outcome matrix shows that the plain oracle overstates what routing can gain: 75.8% against 64.1% for the best fixed variant. Much of that gain comes from pruned variants that answer every question identically. Restricted to variants that beat a constant answer, the oracle reaches 66.1% and still sends 95.7% of questions to the unpruned model. On the T4, all variants cost about the same per multiple-choice question and the pruned variants generate longer GSM8K answers, so per-query compression routing has little to gain there.
+### What did not work
 
-**Next questions.**
-- Does the laptop-CPU cost model change this?
-- Do less aggressive ratios (10–20%) keep more tasks above the constant-answer baseline?
+- **Accuracy falls steeply.**
+  - Macro accuracy goes from 62.5% (unpruned) to 47.3% (20%), 40.0% (35%) and 32.6% (50%).
+  - On MMLU, the most frequent answer covers 100% of questions for both FLAP-35% and FLAP-50% (unpruned: 32%).
+  - On GSM8K, the pruned variants reach the 256-token limit on 80–100% of questions.
+- **No latency saving on the T4.**
+  - At batch size 1, decode latency stays at 30.4–31.1 ms per token for every ratio, so pruning does not shorten generation there.
+  - Multiple-choice costs are similar across variants and GSM8K outputs get longer, so per-query routing saves no latency on this GPU.
+- **No laptop-CPU timings.** They were not reliable enough to report (Section 9.2).
+
+### What is next
+
+The results point to concrete steps:
+- Evaluate milder ratios (10–30%) to test whether the pruned variants stay above the constant-answer baseline on more tasks.
+- Remove the per-token overhead on the GPU with a static KV cache and CUDA graphs.
+- Use int8 weights on the CPU. Both speed-ups are implemented and unit-tested but not yet measured.
+- Take a controlled CPU measurement.
 
 ## 11. Plan for the Remaining Work
 
