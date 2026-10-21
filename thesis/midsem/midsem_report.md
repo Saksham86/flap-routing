@@ -15,7 +15,9 @@ We study whether choosing an LLM's compression level per query pays off on edge 
 
 On a Tesla T4, FLAP raises WikiText-2 perplexity from 18.48 to 25.94 at 20% and to 124.62 at 50% of prunable parameters removed. Wanda-SP reaches 549.25 at 50%, and Magnitude-SP fails at every ratio, which reproduces the FLAP paper's method ranking at this scale. Pruning 50% cuts 1024-token prefill latency by 38% and energy per generated token by 27%. However, batch-1 decode latency stays at 30.4–31.1 ms per token for every ratio.
 
-Per-variant accuracy on the query pool, the oracle headroom available to a router, and laptop-CPU latencies are being measured and are reported as pending.
+On 3,849 test questions, macro accuracy falls from 62.5% (unpruned) to 47.3% (FLAP 20%), 40.0% (FLAP 35%) and 32.6% (FLAP 50%). Several pruned variants collapse to a constant answer on MMLU and BoolQ, and fail to finish GSM8K answers.
+
+A per-query oracle over the variants reaches 75.8%, against 64.1% for the best fixed variant. But once variants that do not beat a constant answer are excluded, the gain shrinks to 1.9 points (66.1%). So on this GPU the headroom for per-query compression routing is small. Laptop-CPU latencies are pending.
 
 ---
 
@@ -28,9 +30,11 @@ This thesis studies whether choosing the compression level *per query* pays off 
 In the resource-management taxonomy of Walia et al. [1], the compression level is the resource being allocated, and the router makes a per-request scheduling/provisioning decision. Neither that survey nor the MCDS scheduler [2] treats LLM-inference workloads.
 
 **Status at mid-semester.**
-- **Complete and verified:** Phase 0 (infrastructure) and the CPU part of Phase 2 (query pool, scoring pipeline, external labels).
-- **Implemented, tested and run on a Colab T4:** the FLAP port (Phase 1).
-- **In progress:** the per-variant outcome runs (Phase 2) and the laptop-CPU latency measurements.
+- **Complete and verified:** Phase 0 (infrastructure).
+- **Implemented, tested and run on a Colab T4:**
+  - Phase 1: the FLAP port, the ratio sweep and the baselines.
+  - Phase 2 on the test split: the query pool, scoring pipeline and external labels, plus the outcome runs of four variants and the headroom analysis.
+- **Deferred:** laptop-CPU latency measurements (Section 9.2) and the Phase 2 outcome runs on the train/validation splits.
 
 **Research questions**
 - **RQ1:** Does FLAP give a useful accuracy–cost ladder on a ~1.7 B edge model, and does the paper's ranking (FLAP > Wanda-SP > Magnitude-SP) hold at this scale?
@@ -38,7 +42,7 @@ In the resource-management taxonomy of Walia et al. [1], the compression level i
 - **RQ3:** How much of that headroom does a cheap router recover, and does it beat routing by task type alone?
 - **RQ4:** What are the end-to-end latency, energy and memory savings on a GPU and on a laptop CPU?
 
-This report covers RQ1 and the set-up for RQ2. RQ3 and RQ4 are planned (Section 11).
+This report answers RQ1 and gives a first answer to RQ2 on the GPU. RQ3 and RQ4 are planned (Section 11).
 
 ---
 
@@ -133,7 +137,7 @@ A router is useful only if its curve lies above H. The headroom bounds how far a
 **Engineering for correctness.**
 - Every script is seeded and config-driven.
 - Each writes its configuration, git commit (with a dirty flag), library versions and logs next to its results.
-- The code base has **53 automated tests**.
+- The code base has **55 automated tests**.
 - Problems found and fixed during the work, each now covered by a test, are listed in Appendix A.
 
 ---
@@ -325,15 +329,119 @@ Energy figures in this work therefore use the counter.
 
 So on this GPU, the latency benefit of width pruning is limited to prefill, while the energy and memory benefits are measurable.
 
-**Laptop CPU (edge device): [pending].** A first set of CPU measurements was discarded because the laptop was running on battery with the CPU throttled (about 55% performance, about 1.97 GHz). Repetition spreads reached 2×, and the variants were non-monotonic in size. Those runs are kept in the repository marked `INVALID`. The re-measurement on mains power, with the power state recorded per variant, is pending.
+**Laptop CPU (edge device): [pending].** Two attempts did not give trustworthy timings, so no CPU numbers are reported.
+
+1. **First attempt (discarded).** The laptop was on battery with the CPU throttled (about 55% performance, about 1.97 GHz). Repetition spreads reached 2×, and the variants were non-monotonic in size.
+2. **Second attempt (on mains power, "Best performance" mode).** Processor performance still varied between 31% and 61%.
+   - The unpruned model measured 443 ms/token at the start of the session and 510 ms/token in a repeat at the end (+15%).
+   - FLAP-20% measured slower than the unpruned model.
+
+Both sets of runs are kept in the repository and marked `INVALID` or `PRELIMINARY`. CPU timing is deferred to a dedicated measurement step (Section 11).
 
 ### 9.3 Accuracy and oracle headroom (P2)
 
-**[pending]** Per-variant accuracy on the 3,849-question test split, and the headroom analysis of Section 4. The outcome runs for the unpruned model and FLAP-20/35/50% are running on the T4. The analysis code is implemented and tested. It reports:
-- per-task accuracy, the random-mixture hull, the per-query oracle and the headroom;
-- two reference levels that separate genuine complementarity between variants from lucky guesses on multiple-choice questions:
-  - the oracle accuracy expected if the variants' errors were independent, 1 − Π_v(1 − A_v);
-  - chance accuracy, 1/k for k options.
+The unpruned model and FLAP-20/35/50% were each evaluated on the 3,849 test-split questions on the T4. All four runs were made from the same clean commit.
+
+**Reproducibility.** Runs repeated in separate Colab sessions on different days gave identical results, question by question:
+- unpruned: 3 runs; FLAP-50%: 2 runs; FLAP-20%: 2 runs;
+- correctness, predictions and prompts all 100% identical.
+
+**Fairness and integrity checks.**
+- All four variants received byte-identical prompts, including GSM8K's 5-shot examples.
+- No GSM8K prompt was at risk of truncation (the longest was 1,471 tokens).
+- Every logged answer passed the integrity checks against lm-eval.
+
+| Task | Unpruned | FLAP 20% | FLAP 35% | FLAP 50% |
+|---|---:|---:|---:|---:|
+| ARC-Challenge | 51.1 | 33.6 | 31.9 | 28.5 |
+| ARC-Easy | 78.1 | 65.1 | 53.7 | 32.4 |
+| BoolQ | 73.2 | 63.3 | 52.1 | 37.0 |
+| GSM8K | 31.8 | 3.0 | 2.3 | 1.1 |
+| HellaSwag | 72.2 | 56.5 | 39.6 | 26.1 |
+| MMLU | 46.4 | 24.8 | 24.1 | 24.1 |
+| PIQA | 81.2 | 74.4 | 65.9 | 60.8 |
+| WinoGrande | 66.1 | 57.5 | 50.4 | 50.8 |
+| **Macro average** | **62.5** | **47.3** | **40.0** | **32.6** |
+
+*Table 4. Accuracy (%) on the test split, primary metric per task.*
+
+**Cost per question.** Mean modelled T4 latency per test question:
+
+| Variant | Cost (ms) |
+|---|---:|
+| Unpruned | 291.6 |
+| FLAP 20% | 506.9 |
+| FLAP 35% | 573.2 |
+| FLAP 50% | 577.0 |
+
+The cost is the measured prefill latency at the question's prompt length, plus measured decode latency × generated tokens for GSM8K. The pruned variants are *more* expensive because of GSM8K (Table 6): they generate up to the 256-token limit. On the multiple-choice tasks, all four variants cost about the same on the T4 (21.3–22.5 ms per question).
+
+**Collapse of the pruned variants.** Accuracy alone hides how the pruned variants fail. Table 5 gives, for each multiple-choice task, the share of questions on which a variant gives its single most frequent answer. 100% means it answers every question identically. "Constant" is the accuracy of always giving the most common correct answer.
+
+| Task | Constant | Unpruned | FLAP 20% | FLAP 35% | FLAP 50% |
+|---|---:|---:|---:|---:|---:|
+| ARC-Easy | 29.3 | 29 | 31 | 34 | 33 |
+| ARC-Challenge | 28.9 | 27 | 27 | 29 | 32 |
+| HellaSwag | 28.0 | 27 | 26 | 27 | 28 |
+| WinoGrande | 51.2 | 52 | 52 | 53 | 56 |
+| PIQA | 50.1 | 51 | 55 | 55 | 52 |
+| BoolQ | 63.0 | 71 | **99** | 55 | **100** |
+| MMLU | 26.6 | 32 | **87** | **100** | **100** |
+
+*Table 5. Share (%) of test questions receiving each variant's most frequent answer.*
+
+- **MMLU:** FLAP-35% and FLAP-50% answer "A" to every question, so their 24.1% accuracy is simply the share of questions whose answer is A.
+- **BoolQ:** FLAP-20% answers "yes" to 99% of questions and FLAP-50% answers "no" to all of them.
+
+| Variant | GSM8K accuracy (%) | Mean tokens | Median tokens | At 256-token limit (%) |
+|---|---:|---:|---:|---:|
+| Unpruned | 31.8 | 122 | 109 | 6.4 |
+| FLAP 20% | 3.0 | 222 | 256 | 80.3 |
+| FLAP 35% | 2.3 | 256 | 256 | 100.0 |
+| FLAP 50% | 1.1 | 256 | 256 | 100.0 |
+
+*Table 6. GSM8K generation on the test split: the pruned variants mostly never finish an answer.*
+
+**Oracle headroom.** The plain oracle (Section 4) counts a question as solved if *any* variant answers it correctly. When some variants answer every question identically, combining them "solves" questions that no router could identify: an always-"yes" and an always-"no" variant together cover all of BoolQ.
+
+We therefore also report an **informative oracle**: on each task, a variant may be chosen only if its accuracy beats the best constant answer (one-sided binomial test, p < 0.01). For GSM8K, which has no constant answer, any correct answer counts.
+
+| Cost model | Best fixed | Oracle | Informative oracle | Independent errors |
+|---|---|---|---|---|
+| T4 GPU | unpruned: 64.1 @ 291.6 ms | 75.8 @ 290.1 ms | **66.1 @ 291.4 ms** | 92.5 |
+
+*Table 7. Accuracy (%) @ mean cost per question.*
+- Accuracy here is pooled over all 3,849 questions; Table 4's macro average weights the eight tasks equally. That is why the unpruned model shows 64.1 here and 62.5 there.
+- "Independent errors" is the oracle accuracy expected if the variants' mistakes were unrelated, 1 − Π_v(1 − A_v).
+
+| Task | n | Constant | Best fixed | Oracle | Informative oracle | Variants above the constant answer |
+|---|---:|---:|---:|---:|---:|---|
+| ARC-Easy | 475 | 29.3 | 78.1 | 84.0 | 82.7 | unpruned, FLAP 20%, FLAP 35% |
+| ARC-Challenge | 235 | 28.9 | 51.1 | 61.7 | 51.1 | unpruned |
+| HellaSwag | 800 | 28.0 | 72.2 | 77.0 | 75.0 | unpruned, FLAP 20%, FLAP 35% |
+| WinoGrande | 254 | 51.2 | 66.1 | 87.4 | 66.1 | unpruned |
+| PIQA | 367 | 50.1 | 81.2 | 86.4 | 86.4 | all four |
+| BoolQ | 654 | 63.0 | 73.2 | 100.0 | 73.2 | unpruned |
+| MMLU | 800 | 26.6 | 46.4 | 58.8 | 46.4 | unpruned |
+| GSM8K | 264 | – | 31.8 | 36.0 | 36.0 | all four |
+
+*Table 8. Per-task accuracy (%) on the test split.*
+
+| Variant | Both right | Only pruned right | Only unpruned right | Both wrong |
+|---|---:|---:|---:|---:|
+| FLAP 20% | 43.2 | 5.6 | 20.9 | 30.3 |
+| FLAP 35% | 33.3 | 7.1 | 30.8 | 28.7 |
+| FLAP 50% | 23.4 | 8.3 | 40.7 | 27.6 |
+
+*Table 9. Outcome overlap with the unpruned model (% of test questions).*
+
+**Analysis.**
+- **The plain oracle overstates the gain.** It reaches 75.8% against 64.1% for the best fixed variant (+11.7 points). Most of that comes from tasks where the pruned variants are no better than a constant answer: BoolQ 73.2 → 100.0, WinoGrande 66.1 → 87.4, MMLU 46.4 → 58.8, ARC-Challenge 51.1 → 61.7.
+- **The honest gain is small.** With only informative variants allowed, the oracle reaches 66.1% (+1.9 points), at essentially the same T4 cost, and it still picks the unpruned model for 95.7% of questions.
+- **Where the real gain comes from.** It comes only from ARC-Easy (+4.6), HellaSwag (+2.8), PIQA (+5.2) and GSM8K (+4.2), the tasks where the pruned variants still carry real information.
+- **The variants fail on the same questions.** The observed oracle (75.8%) is far below the independent-errors reference (92.5%).
+- **24.2%** of test questions are answered correctly by no variant.
+- **Answer to RQ2 (on the T4):** with FLAP at 20–50% on this 1.7 B model, per-query compression routing has little to gain. The pruned variants either collapse on a task or cost about the same per multiple-choice question, and they cost more on generation. Whether this changes under an edge-CPU cost model, and at milder ratios (10–20%), is the next question (Section 11).
 
 ---
 
@@ -349,14 +457,18 @@ So on this GPU, the latency benefit of width pruning is limited to prefill, whil
 - **RQ1:** FLAP produces a steep accuracy–cost ladder on a 1.7 B model (perplexity ×1.40 at 20%, ×6.74 at 50%) and keeps its advantage over Wanda-SP and Magnitude-SP.
 - **T4 behaviour:** at batch size 1, width pruning reduces prefill latency, energy and memory, but not decode latency. So the cost model used for routing must be measured per device rather than assumed proportional to parameter count.
 
-**What comes next.** Whether routing pays off (RQ2) depends on the oracle headroom, which the outcome runs now in progress will measure. The analysis separates genuine complementarity between variants from lucky guesses by comparing with independence and chance references.
+**RQ2 on the GPU.** The outcome matrix shows that the plain oracle overstates what routing can gain: 75.8% against 64.1% for the best fixed variant. Much of that gain comes from pruned variants that answer every question identically. Restricted to variants that beat a constant answer, the oracle reaches 66.1% and still sends 95.7% of questions to the unpruned model. On the T4, all variants cost about the same per multiple-choice question and the pruned variants generate longer GSM8K answers, so per-query compression routing has little to gain there.
+
+**Next questions.**
+- Does the laptop-CPU cost model change this?
+- Do less aggressive ratios (10–20%) keep more tasks above the constant-answer baseline?
 
 ## 11. Plan for the Remaining Work
 
 | Phase | Weeks | Work |
 |---|---|---|
-| P1 | in progress | Finish sweep analysis; choose the 4 variants; CPU profiles of all variants on mains power. |
-| P2 | next 2 weeks | Outcome runs for all variants (train/val/test); headroom report; decision gate. |
+| P1 | next 2 weeks | Revisit the variant set given the collapse at ≥35% (add FLAP 10% and 30%). Faster execution: static KV cache + CUDA graphs on the T4, int8 weights and P-core thread pinning on the laptop CPU (code implemented and unit-tested, not yet measured). CPU latency in a dedicated idle measurement window. |
+| P2 | next 2 weeks | Outcome runs on train/validation for the chosen variants; headroom under the CPU cost model; decision gate. |
 | P3 | weeks 8–10 | Routers (rule, kNN, LR, MLP; task-type and RouterBench-trained baselines); calibration; offline replay. |
 | P4 | weeks 11–14 | Shared-weight runtime; `Pipeline.run`; live validation of replay and cost model on T4 and laptop CPU. |
 | P5 | weeks 15–18 | Accuracy–cost curves, iso-accuracy savings, deployment modes under a memory budget, bootstrap CIs. |
@@ -373,6 +485,8 @@ So on this GPU, the latency benefit of width pruning is limited to prefill, whil
 4. **Run provenance.** Runs made inside the repository were recorded as having uncommitted changes, because the run's own output folder was counted. The git state is now read before the run folder is created.
 5. **FLAP hard-coded values.** The official FLAP code hard-codes head dimension 128 and the head weight 512/3 (LLaMA-7B values), and writes to bias tensors that bias-free models do not have. The port generalises all three.
 6. **CPU timing on battery.** CPU timings taken on battery power were throttled and inconsistent. They were discarded, and profiling now refuses to run on battery.
+7. **Lucky-guess inflation of the oracle.** Pruned variants that always give the same answer made the plain oracle reach 100% on BoolQ. The analysis now also reports an informative oracle, which only allows variants that beat a constant answer.
+8. **Damaged local environment.** A Python environment under the Windows Temp folder was partly deleted by temp cleanup in the middle of a run. The environment now lives inside the project folder.
 
 ---
 

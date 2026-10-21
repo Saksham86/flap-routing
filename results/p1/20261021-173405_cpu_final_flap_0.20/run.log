@@ -1,0 +1,3 @@
+2026-10-21 17:34:39 | INFO    | p1.profile | hardware: {'device': 'cpu', 'torch_threads': 12, 'processor': 'Intel64 Family 6 Model 154 Stepping 3, GenuineIntel', 'platform': 'Windows-11-10.0.26200-SP0', 'dtype': 'torch.float32'}
+2026-10-21 17:39:56 | INFO    | p1.profile | [flap_0.20] params=1.389B decode=470.3 ms/tok prefill={128: 4587.2, 512: 13601.9} (317s)
+2026-10-21 17:39:56 | INFO    | p1.profile | done

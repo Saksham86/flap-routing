@@ -1,0 +1,2 @@
+variant,quantize,threads,ppl_subset,linear_weight_gb,n_params,weight_gb,decode_ms_per_tok,gen_tokens_per_s,prefill_ms_128,prefill_ms_512
+none_0.00,none,12,,6.375,1711376384,6.375373840332031,510.05364516224233,1.6152095317209634,4000.008099945262,21245.982500026003

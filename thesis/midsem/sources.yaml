@@ -5,4 +5,4 @@ pool_manifest: data/p2/manifest.json
 routerbench_report: data/p2/routerbench_report.json
 p1_sweep_dir: results/p1/20261019-144738_flap_sweep
 cpu_profile_dirs: []        # laptop CPU profiles on AC power (earlier battery-throttled runs are marked INVALID)
-p2_analysis_dir: results/p2/20261021-172426_analyze
+p2_analysis_dir: results/p2/20261021-174250_analyze

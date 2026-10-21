@@ -1,0 +1,50 @@
+{
+  "none_0.00": {
+    "device": "cpu",
+    "prompt_lens": [
+      128,
+      512
+    ],
+    "gen_tokens": 32,
+    "warmup": 2,
+    "reps": 5,
+    "prefill": {
+      "128": {
+        "median_ms": 4000.008099945262,
+        "min_ms": 3750.1725000329316,
+        "max_ms": 4942.905500065535
+      },
+      "512": {
+        "median_ms": 21245.982500026003,
+        "min_ms": 18080.66370000597,
+        "max_ms": 39243.79850004334
+      }
+    },
+    "generate": {
+      "prompt_len": 128,
+      "median_ms": 19811.671099974774,
+      "min_ms": 19719.443599926308,
+      "max_ms": 23427.82470001839,
+      "decode_ms_per_tok": 510.05364516224233,
+      "tokens_per_s": 1.6152095317209634
+    },
+    "energy": null,
+    "weight_bytes": 6845505536,
+    "n_params": 1711376384,
+    "power_before": {
+      "battery_status": 2,
+      "on_ac_power": true,
+      "cpu_percent_performance": 60.0,
+      "cpu_frequency_mhz": 1991.0
+    },
+    "power_after": {
+      "battery_status": 2,
+      "on_ac_power": true,
+      "cpu_percent_performance": 60.0,
+      "cpu_frequency_mhz": 2131.0
+    },
+    "quantize": "none",
+    "torch_threads": 12,
+    "ppl_wikitext2_first_windows": null
+  }
+}

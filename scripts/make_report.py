@@ -215,11 +215,14 @@ def p1_section(src) -> tuple[str, dict]:
               + analysis)
     cpu = cpu_profiles(src)
     if not cpu:
-        s += (r"\paragraph{Laptop CPU (edge device).} \pend{a first set of CPU measurements was discarded because the "
-              r"laptop was running on battery with the CPU throttled (about 55\% performance, about 1.97\,GHz); "
-              r"repetition spreads reached 2$\times$ and the variants were non-monotonic in size. Those runs are kept in "
-              r"the repository marked INVALID. The re-measurement on mains power, with the power state recorded per "
-              r"variant, is pending.}" + "\n\n")
+        s += (r"\paragraph{Laptop CPU (edge device).} \pend{two attempts did not give trustworthy timings, so no CPU "
+              r"numbers are reported. The first ran on battery with the CPU throttled (about 55\% performance, about "
+              r"1.97\,GHz; repetition spreads up to 2$\times$, variants non-monotonic in size). The second ran on mains "
+              r"power in ``Best performance'' mode, but processor performance still varied between 31\% and 61\%, the "
+              r"unpruned model measured 443\,ms/token at the start of the session and 510\,ms/token in a repeat at the "
+              r"end (+15\%), and FLAP-20\% measured slower than the unpruned model. Both sets are kept in the repository "
+              r"marked INVALID / PRELIMINARY; CPU timing is deferred to a dedicated measurement step "
+              r"(Section~\ref{sec:plan}).}" + "\n\n")
     if cpu:
         body = []
         for name, r in cpu.items():
@@ -319,7 +322,11 @@ def p2_section(src) -> tuple[str, dict]:
           "answer ``no'' together cover all of BoolQ). We therefore also report an \\emph{informative oracle}: on each "
           "task a variant may be chosen only if its accuracy beats the best constant answer (one-sided binomial test, "
           f"$p<{io['alpha']}$). Table~\\ref{{tab:headroom}} gives both, with the accuracy expected if the variants' errors "
-          "were independent, $1-\\prod_v(1-A_v)$. Entries are accuracy (\\%) @ mean cost per question (ms).\n\n"
+          "were independent, $1-\\prod_v(1-A_v)$. Entries are accuracy (\\%) @ mean cost per question (ms); "
+          "accuracy here is over all test questions pooled, whereas Table~\\ref{tab:acc} averages the eight tasks "
+          f"with equal weight, which is why {vname(first['best_fixed']['variant'])} shows "
+          f"{first['best_fixed']['accuracy'] * 100:.1f} here and "
+          f"{float(next(r for r in acc if r['task'] == 'macro_avg')[first['best_fixed']['variant']]) * 100:.1f} there.\n\n"
           "\\begin{table}[h]\\centering\\small\n\\begin{tabular}{lllll}\n\\toprule\n"
           "Cost model & Best fixed & Oracle & Informative oracle & Independent \\\\\n\\midrule\n" + "\n".join(rows)
           + "\n\\bottomrule\n\\end{tabular}\n\\caption{Best fixed variant, oracle and informative oracle on the test "

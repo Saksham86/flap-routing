@@ -51,11 +51,11 @@ In the resource-management taxonomy of Walia et al.~\citep{walia2024survey}, the
 the resource being allocated and the router is a per-request scheduling/provisioning decision; that
 survey and the MCDS scheduler~\citep{tuli2022mcds} do not treat LLM-inference workloads.
 
-\paragraph{Status at mid-semester.} Phases 0 (infrastructure) and the CPU part of Phase 2 (query pool,
-scoring pipeline, external labels) are complete and verified. The FLAP port (Phase 1) is implemented
-and tested; its GPU sweep and the per-variant outcome runs are being executed on a Colab T4 at the
-time of writing. Section~\ref{sec:results} reports only numbers that exist in result files; everything
-else is marked as pending.
+\paragraph{Status at mid-semester.} Phase 0 (infrastructure) is complete and verified. Phase 1 (FLAP port,
+ratio sweep, baselines) and Phase 2 on the test split (query pool, scoring pipeline, external labels, outcome
+runs of four variants, headroom analysis) are implemented, tested and run on a Colab T4. Laptop-CPU latency
+and the train/validation outcome runs are deferred. Section~\ref{sec:results} reports only numbers that
+exist in result files; everything else is marked as pending.
 
 \paragraph{Research questions.}
 \begin{enumerate}
@@ -66,7 +66,7 @@ else is marked as pending.
   \item[RQ3] How much of that headroom does a cheap router recover, and does it beat routing on task type alone?
   \item[RQ4] What are the end-to-end latency, energy and memory savings on a GPU and on a laptop CPU?
 \end{enumerate}
-RQ1--RQ2 are the subject of this report; RQ3--RQ4 are planned (Section~\ref{sec:plan}).
+This report answers RQ1 and gives a first answer to RQ2 on the GPU; RQ3--RQ4 are planned (Section~\ref{sec:plan}).
 
 %=======================================================================================
 \section{Related Work}
@@ -173,7 +173,7 @@ Figure~\ref{fig:pipeline} shows the pipeline.
 
 \paragraph{Engineering for correctness.} Every script is seeded and config-driven and writes its
 configuration, git commit (with a dirty flag), library versions and logs next to its results. The code
-base has 53 automated tests. Problems found and fixed during the work, each now covered by a test, are
+base has 55 automated tests. Problems found and fixed during the work, each now covered by a test, are
 listed in Appendix~\ref{app:issues}.
 
 %=======================================================================================
@@ -298,8 +298,8 @@ match is stored too.
 \toprule
 Phase & Weeks & Work \\
 \midrule
-P1 & (in progress) & Finish sweep analysis; choose the 4 variants; CPU profiles of all variants. \\
-P2 & next 2 weeks & Outcome runs for all variants (train/val/test); headroom report; decision gate (Eq.~\ref{eq:headroom}). \\
+P1 & next 2 weeks & Revisit the variant set given the collapse at $\ge$35\% (add FLAP 10\%, 30\%); faster execution (static KV cache + CUDA graphs on the T4; int8 weights and P-core thread pinning on the laptop CPU; implemented and unit-tested, not yet measured); CPU latency in a dedicated idle window. \\
+P2 & next 2 weeks & Outcome runs on train/validation for the chosen variants; headroom under the CPU cost model; decision gate (Eq.~\ref{eq:headroom}). \\
 P3 & weeks 8--10 & Routers (rule, $k$NN, LR, MLP; task-type and RouterBench-trained baselines); calibration; offline replay. \\
 P4 & weeks 11--14 & Shared-weight runtime; \texttt{Pipeline.run}; live validation of replay and cost model on T4 and laptop CPU. \\
 P5 & weeks 15--18 & Accuracy--cost curves, iso-accuracy savings, deployment modes under a memory budget, bootstrap CIs. \\
@@ -329,6 +329,10 @@ P7 & weeks 20--22 & Ablations and final thesis. \\
   writes to bias tensors that bias-free models do not have; the port generalises all three.
   \item CPU timings taken on battery power were throttled and inconsistent; they were discarded and profiling now
   refuses to run on battery.
+  \item Pruned variants that always give the same answer made the plain oracle reach 100\% on BoolQ; the analysis
+  now also reports an informative oracle that only admits variants beating a constant answer.
+  \item A Python environment under the Windows Temp folder was partly deleted by temp cleanup in the middle of a run;
+  the environment now lives inside the project folder.
 \end{enumerate}
 
 \bibliographystyle{plainnat}
