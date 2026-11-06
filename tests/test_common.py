@@ -122,3 +122,13 @@ def test_git_dirty_ignores_results_dir(tmp_path):
     (repo / "a.py").write_text("x = 2\n")
     st = git_commit(repo)
     assert st["dirty"] is True and any("a.py" in f for f in st["dirty_files"])
+
+
+def test_start_run_treats_reserved_empty_dir_as_new(tmp_path):
+    from qacr.common.run import start_run
+    cfg = {"phase": "p", "run_name": "r", "seed": 0, "paths": {"results_root": str(tmp_path)}}
+    (tmp_path / "p" / "fixed").mkdir(parents=True)
+    run = start_run(cfg, run_id="fixed", argv=[])
+    assert (run.dir / "config.yaml").exists() and (run.dir / "meta.json").exists() and run.resumed is False
+    again = start_run(cfg, run_id="fixed", argv=[])
+    assert again.resumed is True

@@ -1,0 +1,27 @@
+# P3 input (GPU): one variant on the train and val splits, for router training and operating-point selection.
+# Same settings as configs/p2_outcomes.yaml. Run once per variant (notebook cell 7c).
+phase: p2
+run_name: outcomes_trainval
+seed: 2026                  # also the lm-eval few-shot seed: must be identical for every variant
+require_gpu: false          # the Colab notebook passes --set require_gpu=true
+
+paths:
+  results_root: ${QACR_RESULTS_ROOT}
+
+pool:
+  path: data/p2/query_pool.parquet
+  splits: [train, val]
+  max_docs_per_task: null
+
+variant:
+  name: v0
+  kind: hf
+  path: HuggingFaceTB/SmolLM2-1.7B
+  dtype: float16
+
+lm_eval:
+  batch_size: 16
+  max_length: 2048
+  max_gen_toks: 256
+
+tasks: null

@@ -128,6 +128,8 @@ def start_run(cfg: dict, run_id: str | None = None, argv: list[str] | None = Non
         raise FileNotFoundError(f"Asked to resume {run_id} but {run_dir} does not exist")
     if not resumed and run_dir.exists():
         raise FileExistsError(f"{run_dir} already exists; pass its run_id to resume")
+    if resumed and not any(run_dir.iterdir()):
+        resumed = False  # an empty directory reserved by the caller (fixed run id): this is its first run
     run_dir.mkdir(parents=True, exist_ok=True)
 
     run = Run(run_id=run_id, dir=run_dir, cfg=cfg, resumed=resumed)

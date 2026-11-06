@@ -8,13 +8,20 @@ _Last updated: 2026-10-13_
 | P0 Setup | **Done** (Colab exit run passed 2026-10-19) | **Yes** — `hello_gpu` passed on a Tesla T4, NVML counter supported | ~0.05 |
 | P1 FLAP port + ladder | Not started (blocked on P0) | — | 0 |
 | P2 Query pool + outcomes | **CPU parts done on branch `p2-query-pool`**; GPU outcome runs pending (v0 after the P0 exit; v1–v3 after P1) | No — needs outcome runs for all 4 variants + headroom report | 0 |
-| P3 Routers | Not started | — | 0 |
+| P3 Routers | **Code done and tested on branch `p3-routers`; no router has run on real data** | No: needs the train/val outcome runs (notebook 7c), then 7d | 0 |
 | P4 Runtime + pipeline | Not started | — | 0 |
 | P5 Evaluation | Not started | — | 0 |
 | P6 Cascade (optional) | Not started | — | 0 |
 | P7 Ablations + thesis | Not started | — | 0 |
 
 **GPU-hours total: 0** (budget ~20–30)
+
+## P3 — Routers (2026-11-06)
+- Code: `src/qacr/router/`, `scripts/p3_routers.py`, `configs/p3_*.yaml`, notebook cells 7c/7d, `tests/test_router.py`.
+- Ladder: unpruned + in-domain FLAP 10/20/35%. Train on train, hyper-parameters, Platt scaling and operating points on val, replay once on test.
+- Checked: the loading path reproduces the report's fixed-variant points on real test outcomes. The MiniLM encoder has not run yet (the notebook preflights it).
+- Not done: figures from the curves, and the report update (both wait for real results).
+- Caveat: the ladder was chosen after seeing test results in P2, so router results on test are not fully blind to that choice.
 
 ## P0 — Setup
 

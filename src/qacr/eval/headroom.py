@@ -16,6 +16,9 @@ Definitions (all on one query set Q, e.g. the test split):
 """
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 
@@ -34,6 +37,24 @@ def interp_prefill(lengths: list[int], ms: list[float], n: np.ndarray) -> np.nda
     out[lo] = y[0] + (n[lo] - x[0]) * (y[1] - y[0]) / (x[1] - x[0])
     out[hi] = y[-1] + (n[hi] - x[-1]) * (y[-1] - y[-2]) / (x[-1] - x[-2])
     return np.maximum(out, 0.0)
+
+
+def load_profiles(spec: dict, names: dict[str, str]) -> dict[str, dict]:
+    """spec: {"dir": run_dir} (one profile run for all variants) or additionally
+    {"per_variant_dirs": {variant: run_dir}} for variants profiled in other runs."""
+    cache: dict[str, dict] = {}
+    out = {}
+    for variant, pname in names.items():
+        d = (spec.get("per_variant_dirs") or {}).get(variant, spec["dir"])
+        if d not in cache:
+            cache[d] = json.loads((Path(d) / "profiles.json").read_text(encoding="utf-8"))
+        p = cache[d][pname]
+        lens = sorted(int(k) for k in p["prefill"])
+        out[variant] = {"prefill_lengths": lens, "prefill_ms": [p["prefill"][str(L)]["median_ms"]
+                                                                if str(L) in p["prefill"] else p["prefill"][L]["median_ms"]
+                                                                for L in lens],
+                        "decode_ms_per_tok": p["generate"]["decode_ms_per_tok"]}
+    return out
 
 
 def query_costs(outcomes: pd.DataFrame, profiles: dict[str, dict]) -> pd.Series:

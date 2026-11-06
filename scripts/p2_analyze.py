@@ -10,7 +10,6 @@ Outputs in results/p2/<run_id>/: matrix.parquet, headroom_<device>.json, accurac
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from pathlib import Path
 
@@ -22,25 +21,7 @@ import pandas as pd  # noqa: E402
 from qacr.common.config import get_dotted, load_config  # noqa: E402
 from qacr.common.logging_utils import close_logger, get_logger  # noqa: E402
 from qacr.common.run import start_run  # noqa: E402
-from qacr.eval.headroom import analyze, query_costs  # noqa: E402
-
-
-def load_profiles(spec: dict, names: dict[str, str]) -> dict[str, dict]:
-    """spec: {"dir": run_dir} (one profile run for all variants) or additionally
-    {"per_variant_dirs": {variant: run_dir}} for variants profiled in other runs."""
-    cache: dict[str, dict] = {}
-    out = {}
-    for variant, pname in names.items():
-        d = (spec.get("per_variant_dirs") or {}).get(variant, spec["dir"])
-        if d not in cache:
-            cache[d] = json.loads((Path(d) / "profiles.json").read_text(encoding="utf-8"))
-        p = cache[d][pname]
-        lens = sorted(int(k) for k in p["prefill"])
-        out[variant] = {"prefill_lengths": lens, "prefill_ms": [p["prefill"][str(L)]["median_ms"]
-                                                                if str(L) in p["prefill"] else p["prefill"][L]["median_ms"]
-                                                                for L in lens],
-                        "decode_ms_per_tok": p["generate"]["decode_ms_per_tok"]}
-    return out
+from qacr.eval.headroom import analyze, load_profiles, query_costs  # noqa: E402
 
 
 def main(argv: list[str] | None = None) -> int:

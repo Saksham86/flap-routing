@@ -1,0 +1,54 @@
+# P3 routers on the ladder: unpruned + in-domain-calibrated FLAP 10/20/35%.
+# Train/val outcomes come from notebook cell 7c (fixed run ids); test outcomes are the P2 runs.
+phase: p3
+run_name: routers
+seed: 0
+evaluate_test: true         # false = stop at val; nothing is read from the test split
+bootstrap: 10000
+
+paths:
+  results_root: ${QACR_RESULTS_ROOT}
+
+embedding_cache: ${QACR_DRIVE_ROOT:-.cache}/p3_minilm_embeddings.npz
+
+encoder:
+  kind: minilm
+  name: sentence-transformers/all-MiniLM-L6-v2
+  revision: null            # the resolved commit is recorded in encoder.json
+
+outcomes:
+  trainval:
+    v0: ${QACR_RESULTS_ROOT:-results}/p2/p3_trainval_v0
+    flaptask_0.10: ${QACR_RESULTS_ROOT:-results}/p2/p3_trainval_flaptask_0.10
+    flaptask_0.20: ${QACR_RESULTS_ROOT:-results}/p2/p3_trainval_flaptask_0.20
+    flaptask_0.35: ${QACR_RESULTS_ROOT:-results}/p2/p3_trainval_flaptask_0.35
+  test:
+    v0: results/p2/20261021-105141_outcomes
+    flaptask_0.10: results/p2/20261021-140540_outcomes
+    flaptask_0.20: results/p2/20261021-132342_outcomes
+    flaptask_0.35: results/p2/20261021-134247_outcomes
+
+variant_profile_names:
+  v0: none_0.00
+  flaptask_0.10: flaptask_0.10
+  flaptask_0.20: flaptask_0.20
+  flaptask_0.35: flaptask_0.35
+
+profiles:
+  T4_GPU:
+    dir: results/p1/20261019-144738_flap_sweep
+    per_variant_dirs:
+      flaptask_0.10: results/p1/20261021-125817_flap_taskcal
+      flaptask_0.20: results/p1/20261021-125817_flap_taskcal
+      flaptask_0.35: results/p1/20261021-125817_flap_taskcal
+
+param_ratio:
+  base: T4_GPU              # reference only: cost proportional to parameter count, until CPU timings exist
+
+routers:
+  platt: true
+  logreg_C: [0.01, 0.1, 1.0]
+  knn_k: [10, 20, 50, 100]
+  mlp_hidden: 128
+  mlp_alpha: [0.001, 0.1]
+  mlp_seeds: [0, 1, 2, 3, 4]
